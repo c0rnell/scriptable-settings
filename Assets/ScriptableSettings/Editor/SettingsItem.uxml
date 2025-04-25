@@ -1,0 +1,8 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Assets/ScriptableSettings/Editor/SettingsManagerWindow.uss?fileID=7433441132597879392&amp;guid=2b8a286df43240d3a560bbf126090697&amp;type=3#SettingsManagerWindow" />
+    <ui:VisualElement name="Item" style="flex-grow: 0; flex-direction: row; align-items: center;">
+        <ui:VisualElement name="Icon" class="setting-item-folder setting-item-folder-icon" style="flex-grow: 0; height: 100%;" />
+        <ui:Label text="Label" style="flex-grow: 1; justify-content: center;" />
+        <ui:Button text="+&#10;" style="flex-shrink: 1;" />
+    </ui:VisualElement>
+</ui:UXML>
