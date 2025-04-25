@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using ScriptableSettings;
 using UnityEngine;
@@ -9,19 +10,23 @@ using System.IO;
 #endif
 
 [CreateAssetMenu(fileName = "SettingsManager", menuName = "Settings/Settings Manager")]
-public class SettingsManager : ScriptableObject
+public class SettingsManager : ScriptableObject, ISerializationCallbackReceiver
 {
-    [SerializeField] private List<SettingNode> roots = new List<SettingNode>();
+    [SerializeField]
+    private List<SettingNodeData> serializedNodes = new List<SettingNodeData>();
 
+    [NonSerialized] private List<SettingNode> roots;
     // Non-Serialized fields - same as before
     [NonSerialized] private Dictionary<Guid, SettingNode> nodeIndex;
     [NonSerialized] private ISettingLoader loader;
     [NonSerialized] private bool indexBuilt = false;
 
     // Properties and Core Methods - same as before
-    public IReadOnlyList<SettingNode> Roots => roots;
+    public IReadOnlyList<SettingNode> SettingTree => roots;
     public ISettingLoader Loader => loader;
-    private void OnEnable() { BuildIndexAndParentsIfNeeded(); }
+
+    [NonSerialized] private bool indexChanged = false;
+    
      private void BuildIndexAndParentsIfNeeded()
     {
         // Avoid rebuilding redundantly if OnEnable is called multiple times
@@ -33,8 +38,7 @@ public class SettingsManager : ScriptableObject
 
         // Initialize processing with root nodes
         foreach (var root in roots)
-        {
-             root.Parent = null; // Explicitly set root parents to null
+        { // Explicitly set root parents to null
              nodesToProcess.Enqueue(root);
         }
 
@@ -61,11 +65,10 @@ public class SettingsManager : ScriptableObject
             // Set parent references for children and enqueue them
             foreach (var child in node.Children)
             {
-                 child.Parent = node;
                  nodesToProcess.Enqueue(child);
             }
         }
-         indexBuilt = true;
+         indexBuilt = indexChanged = true;
          //Debug.Log($"SettingsManager Index built. {nodeIndex.Count} nodes indexed.");
     }
 
@@ -139,6 +142,74 @@ public class SettingsManager : ScriptableObject
 
         return setting as T;
     }
+    
+    public void OnBeforeSerialize()
+    {
+        if(indexChanged == false) return;
+        // Flatten your runtime graph back into DTOs
+        serializedNodes.Clear();
+        if (nodeIndex == null ) return;
+
+        foreach (var node in nodeIndex.Values)
+        {
+            serializedNodes.Add(new SettingNodeData {
+                id        = ShortGuid.Encode(node.Guid),
+                name      = node.Name,
+                typeName  = node.SettingType.AssemblyQualifiedName,
+                parentId  = node.Parent != null ? ShortGuid.Encode(node.Parent.Guid) : null,
+                childIds  = node.Children.Select(c => ShortGuid.Encode(c.Guid)).ToList()
+            });
+        }
+
+        indexChanged = false;
+    }
+    
+    public void OnAfterDeserialize()
+    {
+        // Rebuild runtime graph from the flat DTO list
+        var dataWithId = serializedNodes
+            .Select(x => (id: ShortGuid.Decode(x.id), data: x)).ToList();
+        
+        nodeIndex = dataWithId
+            .ToDictionary(
+                d => d.id,
+                d => new SettingNode(d.data.name, ConstructType(d.data), d.id)
+            );
+
+        foreach (var data in dataWithId)
+        {
+            var parentNode = nodeIndex[data.id];
+            foreach (var childId in data.data.childIds)
+            {
+                var childNode = nodeIndex[ShortGuid.Decode(childId)];
+                parentNode.AddChild(childNode);
+            }
+        }
+        
+        roots = nodeIndex.Values.Where(x => x.Parent == null).ToList();
+    }
+
+    private Type ConstructType(SettingNodeData data)
+    {
+        if (!string.IsNullOrEmpty(data.typeName))
+        {
+            var type = Type.GetType(data.typeName);
+            if (type == null)
+            {
+                // Log clearly that the type couldn't be found AT LOAD TIME
+                Debug.LogError($"SettingNode '{name}' (GUID: {ShortGuid.Decode(data.id)}): Could not find Type '{data.typeName}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+            }
+
+            return type;
+            // ... (check if ScriptableObject) ...
+        }
+        else
+        {
+            Debug.LogWarning($"SettingNode '{name}' (GUID: {ShortGuid.Decode(data.id)}) has missing or empty typeName during deserialization.");
+        }
+
+        return null;
+    }
 
 
     // --- Editor-Only CRUD Operations ---
@@ -210,11 +281,15 @@ public class SettingsManager : ScriptableObject
         // 7. Insert node into the tree
          if (parent != null) { parent.AddChild(node); }
          else { roots.Add(node); }
+
+         indexBuilt = false;
+         BuildIndexAndParentsIfNeeded();
+         
          EditorUtility.SetDirty(this); // Mark manager dirty
 
 
         // 8. Rebuild index
-        BuildIndexAndParentsIfNeeded();
+        //BuildIndexAndParentsIfNeeded();
 
         // 9. Save changes
         AssetDatabase.SaveAssets();
@@ -281,10 +356,11 @@ public class SettingsManager : ScriptableObject
              Debug.LogWarning($"Could not find asset path for GUID {guidString} (Node: '{node.Name}'). Node reference removed, but asset file might remain.", this);
          }
 
+        indexBuilt = false;
+        BuildIndexAndParentsIfNeeded();
+        
         // 4. Mark manager dirty and rebuild index
         EditorUtility.SetDirty(this);
-        indexBuilt = false; // Force index rebuild on next access
-        BuildIndexAndParentsIfNeeded();
 
         // 5. Save changes
         AssetDatabase.SaveAssets();
@@ -365,19 +441,17 @@ public class SettingsManager : ScriptableObject
          if (newParent != null)
          {
              newParent.AddChild(node);
-             node.Parent = newParent; // Explicitly update parent reference
          }
          else
          {
              roots.Add(node);
-             node.Parent = null; // Explicitly update parent reference
          }
 
-
+         indexBuilt = false;
+         BuildIndexAndParentsIfNeeded();
+         
         // 5. Mark manager dirty, rebuild index, save
         EditorUtility.SetDirty(this);
-         indexBuilt = false; // Force index rebuild
-         BuildIndexAndParentsIfNeeded();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 

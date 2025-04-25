@@ -6,8 +6,10 @@ using UnityEngine; // For ScriptableObject
 public interface ISettingLoader
 {
     // Load returns base ScriptableObject
-    ScriptableObject Load(string shortId, Guid guid, IList<string> pathSegments);
+    ScriptableObject Load(SettingNode node);
 
     // LoadAsync returns base ScriptableObject
-    Task<ScriptableObject> LoadAsync(string shortId, Guid guid, IList<string> pathSegments);
+    Task<ScriptableObject> LoadAsync(SettingNode node);
+    
+    string NodeLoadPath(SettingNode node);
 }

@@ -10,22 +10,22 @@
     min-width: 60px;
 }
 
-.setting-item-folder-icon {
+.setting-item-folder {
+    -unity-font-style: bold;
+    font-size: 15px;
+}
+
+.setting-item-folder > .icon {
     background-image: none;
     background-color: rgba(216, 225, 33, 0.84);
     -unity-background-scale-mode: scale-and-crop;
     width: 10%;
 }
 
-.setting-item-file-icon {
+.setting-item-file {
+}
+
+.setting-item-file > .icon{
     width: 10%;
     background-color: rgba(0, 0, 0, 0.76);
-}
-
-.setting-item-folder {
-    -unity-font-style: bold;
-    font-size: 15px;
-}
-
-.setting-item-file {
 }

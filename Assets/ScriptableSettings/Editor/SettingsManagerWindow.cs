@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 public class SettingsManagerWindow : EditorWindow
@@ -19,6 +20,7 @@ public class SettingsManagerWindow : EditorWindow
     private Button _createRootButton;
     private Button _validateButton;
     private ObjectField _managerField;
+    private Button _newManagerButton;
 
     private SettingNode _selectedNode;
 
@@ -37,10 +39,7 @@ public class SettingsManagerWindow : EditorWindow
     // Called when the window is enabled or scripts recompile
     private void OnEnable()
     {
-        // Attempt to find manager if one is selected
-        if (_settingsManager == null) {
-             SelectManagerFromProjectSelection();
-        }
+        
     }
 
 
@@ -81,7 +80,7 @@ public class SettingsManagerWindow : EditorWindow
             ClearInspector();
             UpdateButtons();
         });
-        _managerField.value = _settingsManager; // Set initial value
+         // Set initial value
 
 
         // Setup TreeView
@@ -92,6 +91,11 @@ public class SettingsManagerWindow : EditorWindow
         _createRootButton.clicked += OnCreateRootClicked;
         _validateButton.clicked += OnValidateClicked;
 
+        if (_settingsManager == null) {
+            SelectManagerFromProjectSelection();
+        }
+        
+        _managerField.value = _settingsManager;
 
         // Initial State
         PopulateTreeView(); // Populate based on initially loaded manager (if any)
@@ -125,6 +129,23 @@ public class SettingsManagerWindow : EditorWindow
              .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
              .Select(path => AssetDatabase.LoadAssetAtPath<SettingsManager>(path))
              .FirstOrDefault(manager => manager != null);
+
+         if (_settingsManager == null)
+         {
+             var newButton = new Button(){ text = "New Manager" };
+             _managerField.parent.Add(newButton);
+             
+             newButton.RegisterCallback<ClickEvent>(_ => {
+                 _settingsManager = ScriptableObject.CreateInstance<SettingsManager>();
+                 _settingsManager.name = "SettingsManager";
+                 var folderPath = "Assets/Resources";
+                 if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+                 
+                 AssetDatabase.CreateAsset(_settingsManager, $"{folderPath}/SettingsManager.asset");
+                 _managerField.value = _settingsManager;
+                 newButton.RemoveFromHierarchy(); // Remove the button
+             }) ;
+         }
      }
 
     // Optional: Update if selection changes in Project window
@@ -164,11 +185,11 @@ public class SettingsManagerWindow : EditorWindow
             removeButton.userData = index;
             removeButton.RegisterCallback<ClickEvent>(OnSelectedRemove, TrickleDown.TrickleDown);
             // 'index' here is the item ID we assigned
-            if (_nodeMap.TryGetValue(index, out SettingNode node))
+            var node = _treeView.GetItemDataForIndex<SettingNode>(index);
+            if (node != null)
             {
                 label.text = node.Name;
                 SetFileOrFolder(node, element);
-                
             } else {
                 label.text = "Error: Node not found";
             }
@@ -192,16 +213,17 @@ public class SettingsManagerWindow : EditorWindow
 
     private static void SetFileOrFolder(SettingNode node, VisualElement element)
     {
-        element.RemoveFromClassList(".setting-item-folder");
-        element.RemoveFromClassList(".setting-item-file");
+        var item = element.Q("Item");
+        item.RemoveFromClassList("setting-item-folder");
+        item.RemoveFromClassList("setting-item-file");
         
         if (node.Children.Any())
         {
-            element.AddToClassList(".setting-item-folder");
+            item.AddToClassList("setting-item-folder");
         }
         else
         {
-            element.AddToClassList(".setting-item-file");
+            item.AddToClassList("setting-item-file");
         }
     }
 
@@ -274,7 +296,7 @@ public class SettingsManagerWindow : EditorWindow
 
          // Build tree view item data (IDs and mapping) recursively
          List<TreeViewItemData<SettingNode>> treeRootItems = new List<TreeViewItemData<SettingNode>>();
-         foreach (var rootNode in _settingsManager.Roots)
+         foreach (var rootNode in _settingsManager.SettingTree)
          {
              treeRootItems.Add(CreateTreeViewItemRecursive(rootNode));
          }
@@ -340,8 +362,9 @@ public class SettingsManagerWindow : EditorWindow
 
         // Display Node Info (Read-only for now)
          _inspectorPanel.Add(new Label($"Selected Node: {node.Name}") { style = { unityFontStyleAndWeight = FontStyle.Bold } });
+         var refField = new UnityEditor.Search.ObjectField($"Selected Node: {node.Name}") { value = node.Asset };
+         _inspectorPanel.Add(refField);
          _inspectorPanel.Add(new Label($"GUID: {node.Guid}"));
-         _inspectorPanel.Add(new Label($"ShortID: {node.Id}"));
          _inspectorPanel.Add(new Label($"Type: {(node.SettingType != null ? node.SettingType.FullName : node.SettingType + " (Not Found)")}"));
 
          // Add a separator
@@ -353,6 +376,8 @@ public class SettingsManagerWindow : EditorWindow
         {
              ScriptableObject settingSO = _settingsManager.LoadNode<ScriptableObject>(node); // Use synchronous load for editor inspector
 
+             refField.value = settingSO;
+             
              if (settingSO != null)
              {
                  // Create an InspectorElement bound to the loaded SO
@@ -362,7 +387,7 @@ public class SettingsManagerWindow : EditorWindow
              }
              else
              {
-                 _inspectorPanel.Add(new HelpBox($"Could not load the ScriptableObject asset for '{node.Name}'.\nLoader: {_settingsManager.Loader.GetType().Name}\nPath might be: {string.Join("/", node.GetPathSegments())}\nID: {node.Id}", HelpBoxMessageType.Warning));
+                 _inspectorPanel.Add(new HelpBox($"Could not load the ScriptableObject asset for '{node.Name}'.\nLoader: {_settingsManager.Loader.GetType().Name}\nPath might be: {_settingsManager.Loader.NodeLoadPath(node)}\nID: {node.Guid}", HelpBoxMessageType.Warning));
              }
         }
          else if (_settingsManager != null && _settingsManager.Loader == null)

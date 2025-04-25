@@ -8,7 +8,7 @@ using System.Linq; // Required for LINQ operations like .ToList()
 public class CreateSettingNodeWindow : EditorWindow
 {
     private TextField nodeNameField;
-    private DropdownField nodeTypeField; // Or PopupField depending on preference
+    private TypeSelectorField nodeTypeField; // Or PopupField depending on preference
     private Button createButton;
     private Button cancelButton;
 
@@ -29,13 +29,13 @@ public class CreateSettingNodeWindow : EditorWindow
 
     public void CreateGUI()
     {
-        typeMapping.Clear();
+        /*typeMapping.Clear();
 
         foreach (var settingType in FindSettingTypes())
         {
             // Add each setting type to the mapping
             typeMapping.Add(settingType.Name, settingType);
-        }
+        }*/
         
         // Get a reference to the root of the window.
         VisualElement root = rootVisualElement;
@@ -60,7 +60,7 @@ public class CreateSettingNodeWindow : EditorWindow
         root.Add(nodeNameField);
 
        
-        nodeTypeField = new DropdownField("Node Type:", typeMapping.Keys.ToList(), 0); // Select the first item by default
+        nodeTypeField = new TypeSelectorField(FindSettingTypes); // Select the first item by default
         nodeTypeField.style.marginBottom = 10;
         root.Add(nodeTypeField);
 
@@ -81,13 +81,8 @@ public class CreateSettingNodeWindow : EditorWindow
 
         // --- Create Button ---
         createButton = new Button(() => {
-            // Get the selected type string (you'll need to map this back to a System.Type)
-            string selectedTypeName = nodeTypeField.value;
-            string nodeName = nodeNameField.value;
-            
-
             // Call the callback action with the selected type and name
-            onCreateConfirmed?.Invoke(typeMapping[selectedTypeName], nodeName);
+            onCreateConfirmed?.Invoke(nodeTypeField.value, nodeNameField.value);
 
             Close(); // Close the window after creation
         });
@@ -123,7 +118,7 @@ public class CreateSettingNodeWindow : EditorWindow
         
         List<Type> types = nonUnityAssemblies
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.IsClass && !type.IsAbstract && baseType.IsAssignableFrom(type))
+            .Where(type => type.IsClass && !type.IsAbstract && baseType.IsAssignableFrom(type) && type.BaseType != null && !type.BaseType.Namespace.StartsWith("UnityEditor"))
             .Distinct()
             .ToList();
 
