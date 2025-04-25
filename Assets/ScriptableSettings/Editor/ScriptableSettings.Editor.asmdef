@@ -1,0 +1,18 @@
+{
+    "name": "ScriptableSettings.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:8c4e5b2d9c80a6c4cb345ec48c795821"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

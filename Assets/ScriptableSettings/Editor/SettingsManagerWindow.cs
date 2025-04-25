@@ -1,12 +1,9 @@
-﻿#if UNITY_EDITOR
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using System.Collections.Generic;
 using System.Linq;
-using System;
-using UnityEngine.InputSystem.HID; // For Type
 
 public class SettingsManagerWindow : EditorWindow
 {
@@ -465,5 +462,3 @@ public class SettingsManagerWindow : EditorWindow
           }
      }
 }
-
-#endif

@@ -1,0 +1,9 @@
+{
+	"name": "com.scriptable.settings",
+	"version": "0.0.1",
+	"displayName": "Scriptable.Settings",
+	"description": "Scriptable Settings",
+	"keywords": ["settings", "scriptable"],
+	"dependencies": {
+	}
+}
