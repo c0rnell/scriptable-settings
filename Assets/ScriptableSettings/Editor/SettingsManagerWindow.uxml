@@ -8,10 +8,6 @@
     <engine:TwoPaneSplitView name="split" fixed-pane-initial-dimension="230" style="flex-grow: 1; flex-direction: row;">
         <engine:VisualElement name="left-pane">
             <engine:TreeView name="settings-tree" style="flex-grow: 1;" />
-            <engine:VisualElement name="tree-buttons" style="flex-direction: row; height: 25px; padding: 2px;">
-                <engine:Button text="Create Child" name="create-child-button" />
-                <engine:Button text="Delete Selected" name="delete-button" style="margin-left: 5px;" />
-            </engine:VisualElement>
         </engine:VisualElement>
         <engine:ScrollView name="right-pane" mode="Vertical" style="flex-grow: 1;">
             <engine:VisualElement name="inspector-panel" style="padding: 5px;">

@@ -106,11 +106,25 @@ public class CreateSettingNodeWindow : EditorWindow
     private List<Type> FindSettingTypes()
     {
         // Replace BaseSettingType with the actual base class for your settings nodes
-        Type baseType = typeof(ScriptableObject); // Or your specific base type
-
-        List<Type> types = AppDomain.CurrentDomain.GetAssemblies()
+        Type baseType = typeof(ScriptableObject);
+        // Or your specific base type
+        var nonUnityAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly =>
+            {
+                var name = assembly.GetName().Name;
+                return !name.StartsWith("Unity") &&
+                       !name.StartsWith("UnityEditor") &&
+                       !name.StartsWith("UnityEngine") &&
+                       !name.StartsWith("Mono") &&
+                       !name.StartsWith("System") &&
+                       !name.StartsWith("Microsoft");
+            })
+            .ToList();
+        
+        List<Type> types = nonUnityAssemblies
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => type.IsClass && !type.IsAbstract && baseType.IsAssignableFrom(type))
+            .Distinct()
             .ToList();
 
         return types;

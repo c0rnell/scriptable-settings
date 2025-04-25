@@ -154,19 +154,18 @@ public class SettingsManager : ScriptableObject
         }
 
         // 1. Determine folder path for the new asset
-        string parentAssetPath = "";
+        string parentAssetFolderPath = ""; // Default path
         if (parent != null)
         {
             string parentGuidString = parent.Guid.ToString("N"); // Format for AssetDatabase
-            parentAssetPath = AssetDatabase.GUIDToAssetPath(parentGuidString) + "/" + parent.Name;
+            parentAssetFolderPath = AssetDatabase.GUIDToAssetPath(parentGuidString).Replace(".asset", "");
         }
 
         string folderPath;
-        if (!string.IsNullOrEmpty(parentAssetPath))
+        if (!string.IsNullOrEmpty(parentAssetFolderPath))
         {
-            // Place new asset in the same folder as the parent asset
-            folderPath = Path.GetDirectoryName(parentAssetPath);
-            if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+            if (!Directory.Exists(parentAssetFolderPath)) Directory.CreateDirectory(parentAssetFolderPath);
+            folderPath = parentAssetFolderPath;
         }
         else
         {
@@ -270,6 +269,13 @@ public class SettingsManager : ScriptableObject
         {
             AssetDatabase.DeleteAsset(path);
             Debug.Log($"Deleted asset at path: {path}", this);
+            
+            var parentAssetFolderPath = path.Replace(".asset", "");
+            if (Directory.Exists(parentAssetFolderPath) && Directory.GetFiles(parentAssetFolderPath).Length == 0)
+            {
+                AssetDatabase.DeleteAsset(parentAssetFolderPath);
+                Debug.Log($"Deleted empty directory: {parentAssetFolderPath}", this);
+            }
         }
          else {
              Debug.LogWarning($"Could not find asset path for GUID {guidString} (Node: '{node.Name}'). Node reference removed, but asset file might remain.", this);

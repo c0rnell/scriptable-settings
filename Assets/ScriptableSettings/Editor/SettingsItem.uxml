@@ -3,6 +3,7 @@
     <ui:VisualElement name="Item" style="flex-grow: 0; flex-direction: row; align-items: center;">
         <ui:VisualElement name="Icon" class="setting-item-folder setting-item-folder-icon" style="flex-grow: 0; height: 100%;" />
         <ui:Label text="Label" style="flex-grow: 1; justify-content: center;" />
-        <ui:Button text="+&#10;" style="flex-shrink: 1;" />
+        <ui:Button text="+&#10;" name="Add" style="flex-shrink: 1;" />
+        <ui:Button text="x" name="Remove" style="flex-shrink: 1; color: rgb(229, 229, 229); background-color: rgb(244, 0, 0);" />
     </ui:VisualElement>
 </ui:UXML>

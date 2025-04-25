@@ -20,8 +20,6 @@ public class SettingsManagerWindow : EditorWindow
     private VisualElement _inspectorPanel;
     private ScrollView _rightPane; // Reference to ScrollView for resetting scroll
     private Button _createRootButton;
-    private Button _createChildButton;
-    private Button _deleteButton;
     private Button _validateButton;
     private ObjectField _managerField;
 
@@ -73,8 +71,6 @@ public class SettingsManagerWindow : EditorWindow
         _inspectorPanel = root.Q<VisualElement>("inspector-panel");
         _rightPane = root.Q<ScrollView>("right-pane");
         _createRootButton = root.Q<Button>("create-root-button");
-        _createChildButton = root.Q<Button>("create-child-button");
-        _deleteButton = root.Q<Button>("delete-button");
         _validateButton = root.Q<Button>("validate-button");
         _managerField = root.Q<ObjectField>("manager-field");
         _managerField.objectType = typeof(SettingsManager);
@@ -97,8 +93,6 @@ public class SettingsManagerWindow : EditorWindow
 
         // Setup Button Callbacks
         _createRootButton.clicked += OnCreateRootClicked;
-        _createChildButton.clicked += OnCreateChildClicked;
-        _deleteButton.clicked += OnDeleteClicked;
         _validateButton.clicked += OnValidateClicked;
 
 
@@ -129,6 +123,11 @@ public class SettingsManagerWindow : EditorWindow
              if (_managerField != null) _managerField.value = _settingsManager; // Update UI field
              // Don't populate tree here, CreateGUI might not be finished
          }
+         
+         _settingsManager = AssetDatabase.FindAssets("t:SettingsManager")
+             .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
+             .Select(path => AssetDatabase.LoadAssetAtPath<SettingsManager>(path))
+             .FirstOrDefault(manager => manager != null);
      }
 
     // Optional: Update if selection changes in Project window
@@ -160,9 +159,13 @@ public class SettingsManagerWindow : EditorWindow
         _treeView.bindItem = (element, index) =>
         {
             var label = element.Q<Label>();
-            var addButton = element.Q<Button>();
+            var addButton = element.Q<Button>("Add");
             addButton.userData = index;
             addButton.RegisterCallback<ClickEvent>(OnSelectedAdd, TrickleDown.TrickleDown);
+            
+            var removeButton = element.Q<Button>("Remove");
+            removeButton.userData = index;
+            removeButton.RegisterCallback<ClickEvent>(OnSelectedRemove, TrickleDown.TrickleDown);
             // 'index' here is the item ID we assigned
             if (_nodeMap.TryGetValue(index, out SettingNode node))
             {
@@ -179,26 +182,7 @@ public class SettingsManagerWindow : EditorWindow
             var addButton = element.Q<Button>();
             addButton.UnregisterCallback<ClickEvent>(OnSelectedAdd);
         };
-
-        /*// How to get children for a given node ID
-        _treeView.getChildren = (index) => {
-             List<int> childrenIds = new List<int>();
-             if (_nodeMap.TryGetValue(index, out SettingNode node))
-             {
-                 foreach (var childNode in node.Children)
-                 {
-                      // Find the ID associated with the childNode
-                      // This linear search is inefficient for large trees, consider a reverse map
-                      foreach(var kvp in _nodeMap) {
-                          if (kvp.Value == childNode) {
-                              childrenIds.Add(kvp.Key);
-                              break;
-                          }
-                      }
-                 }
-             }
-             return childrenIds;
-        };*/
+        
 
         // Handle selection changes in the TreeView
 #if UNITY_2022_1_OR_NEWER // Or the specific version selectionChanged was added
@@ -228,7 +212,47 @@ public class SettingsManagerWindow : EditorWindow
     {
         if (evt.currentTarget is Button addButton)
         {
-            Debug.Log($"+ called {_nodeMap[(int)addButton.userData].Name}");
+            var addTo = _nodeMap[(int)addButton.userData];
+            
+            if (_settingsManager == null || addTo == null) return;
+
+            CreateSettingNodeWindow.ShowWindow((type, name) =>
+            {
+                SettingNode newNode = _settingsManager.CreateNode(addTo, name, type); // Pass selected node as parent
+                if (newNode != null) {
+                    PopulateTreeView();
+                    _treeView.SetSelectionById(_nodeMap.FirstOrDefault(x => x.Value == newNode).Key); // Select new node
+                    _treeView.ScrollToItemById(_nodeMap.FirstOrDefault(x => x.Value == newNode).Key); // Scroll to it
+                }
+            });
+        }
+        
+    }
+    
+    private void OnSelectedRemove(ClickEvent evt)
+    {
+        if (evt.currentTarget is Button addButton)
+        {
+            {
+                var deleteNode = _nodeMap[(int)addButton.userData];
+                if (_settingsManager == null || deleteNode == null) return;
+
+                if (EditorUtility.DisplayDialog("Delete Setting Node?",
+                        $"Are you sure you want to delete '{deleteNode.Name}' and its associated asset file? This cannot be undone.",
+                        "Delete", "Cancel"))
+                {
+                    SettingNode nodeToDelete = deleteNode;
+                    if (_selectedNode == deleteNode)
+                    {
+                        _selectedNode = null;
+                        ClearInspector();
+                    }
+
+                    _settingsManager.DeleteNode(nodeToDelete);
+                    PopulateTreeView(); // Refresh tree
+                    UpdateButtons();
+                }
+            }
         }
         
     }
@@ -367,8 +391,6 @@ public class SettingsManagerWindow : EditorWindow
 
          _createRootButton.SetEnabled(managerExists);
          _validateButton.SetEnabled(managerExists);
-         _createChildButton.SetEnabled(managerExists && nodeSelected);
-         _deleteButton.SetEnabled(managerExists && nodeSelected);
     }
 
     private void OnCreateRootClicked()
@@ -387,41 +409,7 @@ public class SettingsManagerWindow : EditorWindow
          });
          
     }
-    private void OnCreateChildClicked()
-    {
-         if (_settingsManager == null || _selectedNode == null) return;
-
-         CreateSettingNodeWindow.ShowWindow((type, name) =>
-         {
-             SettingNode newNode = _settingsManager.CreateNode(_selectedNode, name, type); // Pass selected node as parent
-             if (newNode != null) {
-                 PopulateTreeView();
-                 _treeView.SetSelectionById(_nodeMap.FirstOrDefault(x => x.Value == newNode).Key); // Select new node
-                 _treeView.ScrollToItemById(_nodeMap.FirstOrDefault(x => x.Value == newNode).Key); // Scroll to it
-             }
-         });
-    }
-
-
-    private void OnDeleteClicked()
-    {
-        if (_settingsManager == null || _selectedNode == null) return;
-
-         if (EditorUtility.DisplayDialog("Delete Setting Node?",
-              $"Are you sure you want to delete '{_selectedNode.Name}' and its associated asset file? This cannot be undone.",
-              "Delete", "Cancel"))
-         {
-              SettingNode nodeToDelete = _selectedNode; // Store reference before clearing selection
-              _selectedNode = null; // Deselect first
-               ClearInspector();
-
-              _settingsManager.DeleteNode(nodeToDelete);
-              PopulateTreeView(); // Refresh tree
-              UpdateButtons();
-         }
-    }
-
-
+    
     private void OnValidateClicked()
     {
         // Reuse the validation logic (needs to be refactored from SettingsManagerEditor or duplicated)

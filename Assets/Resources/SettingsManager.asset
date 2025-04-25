@@ -12,14 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99a9c5818bf1433e923dfbb1774adfa1, type: 3}
   m_Name: SettingsManager
   m_EditorClassIdentifier: 
-  roots:
-  - id: uWnXsiFXpGiL3gDLIans_g
-    name: Root1
-    typeName: MyCustomSetting, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
-      PublicKeyToken=null
-    children: []
-  - id: EElvJvoR1ABYYDqLQRL9AQ
-    name: New Node
-    typeName: MyCustomSetting, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
-      PublicKeyToken=null
-    children: []
+  roots: []
