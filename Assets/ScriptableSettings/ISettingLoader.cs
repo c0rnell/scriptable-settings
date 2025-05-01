@@ -12,4 +12,6 @@ public interface ISettingLoader
     Task<ScriptableObject> LoadAsync(SettingNode node);
     
     string NodeLoadPath(SettingNode node);
+    
+    
 }

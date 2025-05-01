@@ -1,8 +1,10 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <Style src="project://database/Packages/com.scriptable.settings/Editor/SettingsManagerWindow.uss?fileID=7433441132597879392&amp;guid=2b8a286df43240d3a560bbf126090697&amp;type=3#SettingsManagerWindow" />
-    <ui:VisualElement name="Item" style="flex-grow: 0; flex-direction: row; align-items: center;">
-        <ui:VisualElement name="Icon" class="icon" style="flex-grow: 0; height: 100%; width: 10%;" />
-        <ui:Label text="Label" style="flex-grow: 1; justify-content: center;" />
+    <ui:VisualElement name="Item" class="tree-node" style="flex-grow: 0; flex-direction: row; align-items: center; margin-right: 0;">
+        <ui:VisualElement name="Icon" class="icon" style="flex-grow: 0; height: 100%; width: 10%; -unity-background-scale-mode: scale-to-fit;" />
+        <ui:Label text="Label" style="flex-grow: 0; justify-content: center; padding-left: 3px; display: flex;" />
+        <ui:TextField placeholder-text="filler text" name="Rename" style="display: none;" />
+        <ui:VisualElement name="Separator" style="flex-grow: 1; position: relative; top: auto; left: auto; right: auto; bottom: auto; background-color: rgba(128, 114, 114, 0.68); height: 1px;" />
         <ui:Button text="+&#10;" name="Add" style="flex-shrink: 1;" />
         <ui:Button text="x" name="Remove" style="flex-shrink: 1; color: rgb(229, 229, 229); background-color: rgb(244, 0, 0);" />
     </ui:VisualElement>

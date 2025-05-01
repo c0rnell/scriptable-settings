@@ -1,18 +1,10 @@
 <engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <engine:VisualElement name="toolbar-container" style="flex-direction: row; height: 25px; padding: 2px;">
-        <engine:Button text="Create Root Node" name="create-root-button" />
-        <engine:Button text="Validate Types" name="validate-button" style="margin-left: 10px;" />
-        <engine:VisualElement style="flex-grow: 1;" />
+    <editor:Toolbar name="toolbar-container" style="flex-direction: row; height: 25px; padding: 2px;">
         <editor:ObjectField label="Manager:" name="manager-field" type="UnityEngine.Object" />
-    </engine:VisualElement>
+    </editor:Toolbar>
+    <engine:VisualElement style="flex-grow: 0; height: 1px; background-color: rgb(89, 89, 89); margin-top: 5px; margin-bottom: 5px;" />
     <engine:TwoPaneSplitView name="split" fixed-pane-initial-dimension="230" style="flex-grow: 1; flex-direction: row;">
-        <engine:VisualElement name="left-pane">
-            <engine:TreeView name="settings-tree" style="flex-grow: 1;" />
-        </engine:VisualElement>
-        <engine:ScrollView name="right-pane" mode="Vertical" style="flex-grow: 1;">
-            <engine:VisualElement name="inspector-panel" style="padding: 5px;">
-                <engine:Label text="Select a setting node in the tree." style="unity-text-align: middle-center; padding: 20px;" />
-            </engine:VisualElement>
-        </engine:ScrollView>
+        <engine:VisualElement name="left-pane" />
+        <engine:VisualElement name="right-pane" mode="Vertical" style="flex-grow: 1;" />
     </engine:TwoPaneSplitView>
 </engine:UXML>

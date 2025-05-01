@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 namespace ScriptableSettings
 {
     [Serializable]
     public class SettingNodeData {
-        public string id;
-        public string name;
-        public string typeName;
-        public string parentId;         // empty or null for root
-        public List<string> childIds;   // just GUID strings
+        [FormerlySerializedAs("id")] public string i;
+        [FormerlySerializedAs("name")] public string n;
+        [FormerlySerializedAs("typeName")] public string t;
+        [FormerlySerializedAs("childIds")] public List<string> ch;   // just GUID strings
     }
 }

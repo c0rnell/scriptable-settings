@@ -1,56 +1,32 @@
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Scriptable.Settings.Editor;
+using UnityEditor.Search;
 
 /// <summary>
-/// A reusable field control that lets users select a Type via a namespace-based tree view, suitable for embedding in other UI Toolkit windows.
+/// Internal popup window showing a searchable tree view of namespaces and types.
 /// </summary>
-public class TypeSelectorField : BaseField<Type>
+
+
+public class TypeSelectorDropdown : SelectorPopupField<Type>
 {
-    public new event Action<Type> OnTypeSelected;
-
-    private readonly Label _labelElement;
-    private readonly Button _arrowButton;
-    private readonly Func<IEnumerable<Type>> _typeProvider;
-
-    public new class UxmlFactory : UxmlFactory<TypeSelectorField, UxmlTraits> { }
-    public new class UxmlTraits : BaseField<Type>.UxmlTraits { }
-
-    /// <summary>
-    /// Default constructor using all loaded class types.
-    /// </summary>
-    public TypeSelectorField() : this(GetAllClassTypes) { }
-
-    /// <summary>
-    /// Constructor that accepts a custom type provider.
-    /// </summary>
-    /// <param name="typeProvider">Function returning the list of Types to display.</param>
-    public TypeSelectorField(Func<IEnumerable<Type>> typeProvider) : base(null, null)
+    public TypeSelectorDropdown(string label, Func<IEnumerable<Type>> itemProvider) : base(label, itemProvider)
     {
-        _typeProvider = typeProvider ?? throw new ArgumentNullException(nameof(typeProvider));
-
-        // Label to display current selection
-        _labelElement = new Label("Select Type");
-        _labelElement.AddToClassList("type-selector-label");
-
-        // Arrow button to open the popup
-        _arrowButton = new Button(OpenPopup) { text = "▼" };
-        _arrowButton.AddToClassList("type-selector-arrow");
-
-        // Layout container
-        var container = new VisualElement();
-        container.style.flexDirection = FlexDirection.Row;
-        container.style.alignItems = Align.Center;
-        container.Add(_labelElement);
-        container.Add(_arrowButton);
-
-        // Add to the input part of the field
-        this.Add(container);
     }
 
+    protected override SelectorPopupWindow<Type> ShowSelectionWindow(Func<Type, string, bool> onTypeChosen,
+        Func<IEnumerable<Type>> itemProvider, VisualElement positionParent)
+    {
+        return TypeSelectorPopupWindow.ShowWindow<TypeSelectorPopupWindow>(onTypeChosen, positionParent, 
+            (win) =>
+            {
+                win.SetProvider(itemProvider);
+            }, value);
+    }
+    
     private static IEnumerable<Type> GetAllClassTypes()
     {
         return AppDomain.CurrentDomain.GetAssemblies()
@@ -59,151 +35,73 @@ public class TypeSelectorField : BaseField<Type>
             .OrderBy(t => t.Namespace ?? string.Empty)
             .ThenBy(t => t.Name);
     }
-
-    public override Type value
-    {
-        get => base.value;
-        set
-        {
-            if (base.value == value) return;
-            base.value = value;
-            _labelElement.text = value != null ? value.Name : "Select Type";
-            OnTypeSelected?.Invoke(value);
-            using (var evt = ChangeEvent<Type>.GetPooled(value, value))
-            {
-                evt.target = this;
-                SendEvent(evt);
-            }
-        }
-    }
-
-    private void OpenPopup()
-    {
-        var localRect = _arrowButton.worldBound;
-        var screenPos = GUIUtility.GUIToScreenPoint(new Vector2(localRect.x, localRect.y));
-        var rect = new Rect(screenPos.x, screenPos.y, localRect.width, localRect.height);
-
-        var popup = ScriptableObject.CreateInstance<TypeSelectorPopupWindow>();
-        popup.OnTypeChosen = ChooseType;
-        popup.TypeProvider = _typeProvider;
-        popup.ShowAsDropDown(rect, new Vector2(300, 400));
-    }
-
-    private void ChooseType(Type type)
-    {
-        value = type;
-    }
 }
 
-/// <summary>
-/// Internal popup window showing a searchable tree view of namespaces and types.
-/// </summary>
-internal class TypeSelectorPopupWindow : EditorWindow
+public class TypeSelectorPopupWindow : SelectorPopupWindow<Type>
 {
-    public Action<Type> OnTypeChosen;
-    public Func<IEnumerable<Type>> TypeProvider;
-
-    private string _searchText = string.Empty;
-    private TextField _searchField;
-    private ScrollView _scrollView;
-
-    private void OnEnable()
+    Func<IEnumerable<Type>> _itemProvider;
+    
+    public void SetProvider(Func<IEnumerable<Type>> itemProvider)
     {
-        var root = rootVisualElement;
-        root.style.paddingLeft = 4;
-        root.style.paddingRight = 4;
-        root.style.paddingTop = 4;
-        root.style.paddingBottom = 4;
-
-        // Search field
-        _searchField = new TextField { name = "type-search-field" };
-        _searchField.RegisterValueChangedCallback(evt =>
-        {
-            _searchText = evt.newValue;
-            RebuildTree();
-        });
-        root.Add(_searchField);
-
-        // Scrollable tree view
-        _scrollView = new ScrollView();
-        root.Add(_scrollView);
-
-        RebuildTree();
+        _itemProvider = itemProvider;
     }
 
-    private void RebuildTree()
+    protected override IEnumerable<Type> GetAllItems()
     {
-        _scrollView.Clear();
+        return _itemProvider();
+    }
 
-        // Get filtered list
-        var types = (TypeProvider?.Invoke() ?? Enumerable.Empty<Type>())
-            .Where(t => string.IsNullOrEmpty(_searchText)
-                       || t.Name.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0
-                       || (t.Namespace?.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0))
-            .OrderBy(t => t.Namespace ?? string.Empty)
-            .ThenBy(t => t.Name).ToList();
-
-        // Build namespace tree
-        var rootNode = new NamespaceNode("<global>");
-        foreach (var type in types)
-        {
-            var ns = type.Namespace ?? string.Empty;
-            var segments = ns.Split(new[] {'.'}, StringSplitOptions.RemoveEmptyEntries);
-            var current = rootNode;
-
-            if (types.Count > 15)
-            {
-                foreach (var seg in segments)
-                {
-                    if (!current.Children.TryGetValue(seg, out var child))
-                    {
-                        child = new NamespaceNode(seg);
-                        current.Children[seg] = child;
-                    }
-                    current = child;
-                }
-            }
-            
-            
-            current.Types.Add(type);
-        }
-
-        // Render tree
-        foreach (var child in rootNode.Children.Values)
-            _scrollView.Add(CreateFoldout(child));
+    protected override List<TreeViewItemData<Type>> GroupItemsToTree(List<Type> flat)
+    {
+        if (flat.Count < 10)
+            return base.GroupItemsToTree(flat);
         
-        foreach (var type in rootNode.Types)
+        // 3) build your TreeViewItem list exactly as before,
+        //    grouping by namespace, grabbing each type’s .GetHashCode() as its unique id, etc.
+        var rootItems = flat
+            .GroupBy(t => t.Namespace ?? "<global>")
+            .Select(g =>
+                new TreeViewItemData<Type>(
+                    g.Key.GetHashCode(),
+                    g.First(),
+                    g.Select(t => new TreeViewItemData<Type>(t.GetHashCode(), t)).ToList()
+                )
+            )
+            .ToList();
+
+        return rootItems;
+    }
+
+    protected override void DoSearch(string filter, Type item, List<(Type type, long score)> scoredList)
+    {
+        long score = 0;
+        long nsScore = 0;
+        
+        bool matchName = FuzzySearch.FuzzyMatch(filter, item.Name, ref score);
+        bool matchNs = FuzzySearch.FuzzyMatch(filter, item.Namespace ?? "<global>", ref nsScore);
+        if (matchName || matchNs)
         {
-            var btn = new Button(() => SelectType(type)) { text = type.Name, tooltip = type.FullName};
-            _scrollView.Add(btn);
+            // keep the better of the two scores
+            scoredList.Add((item, Math.Max(score, nsScore)));
         }
     }
 
-    private Foldout CreateFoldout(NamespaceNode node)
+    protected override void FillItemView(int index, Image icon, Label lbl, Type item)
     {
-        var foldout = new Foldout { text = node.Name, value = false };
-        foreach (var sub in node.Children.Values)
-            foldout.Add(CreateFoldout(sub));
-        foreach (var type in node.Types)
-        {
-            var btn = new Button(() => SelectType(type)) { text = type.Name, tooltip = type.FullName };
-            foldout.Add(btn);
-        }
-        return foldout;
+        var category = _treeView.GetChildrenIdsForIndex(index).Any();
+            
+        // give it the C# script icon
+        icon.image = category ? EditorIcons.Folder : EditorIcons.ScriptableObject;
+
+        lbl.text   = category
+            ? item.Namespace
+            : $"{item.Name}";
     }
 
-    private void SelectType(Type type)
+    protected override string FormatSelectionItem(Type item)
     {
-        OnTypeChosen?.Invoke(type);
-        Close();
-    }
-
-    [Serializable]
-    private class NamespaceNode
-    {
-        public string Name;
-        public Dictionary<string, NamespaceNode> Children = new Dictionary<string, NamespaceNode>();
-        public List<Type> Types = new List<Type>();
-        public NamespaceNode(string name) => Name = name;
+        return item.Name;
     }
 }
+
+

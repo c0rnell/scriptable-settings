@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ScriptableSettings;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 #if UNITY_EDITOR
 // No specific editor dependency needed here anymore unless for gizmos etc.
@@ -10,20 +12,24 @@ using UnityEngine;
 public class SettingNode
 {
     public Guid Guid { get; }
-    public string Name { get;  }
+    public string Name { get; private set; }
     public Type SettingType { get; }
     public SettingNode Parent { get; private set; }
-    
     public ScriptableObject Asset => _cache != null && _cache.TryGetTarget(out ScriptableObject so) ? so : null;
     
     private List<SettingNode> children = new List<SettingNode>();
     
     [NonSerialized] private WeakReference<ScriptableObject> _cache; // Weak reference to the loaded asset
     public IReadOnlyList<SettingNode> Children => children;
+    
+    private ISettingLoader _settingLoader;
 
     // --- Constructor (Used by Editor) ---
-    public SettingNode(string name, Type settingType, Guid assetGuid)
+    public SettingNode(string name, Type settingType, Guid assetGuid, ISettingLoader settingLoader)
     {
+        _settingLoader = settingLoader;
+        Assert.IsNotNull(_settingLoader);
+        
         if (assetGuid == Guid.Empty)
             throw new ArgumentException("Asset GUID cannot be empty for a new SettingNode.", nameof(assetGuid));
 
@@ -48,6 +54,11 @@ public class SettingNode
         }
     }
 
+    internal void Rename(string newName)
+    {
+        Name = newName;
+    }
+
     // Internal method to remove a child reference
     internal bool RemoveChild(SettingNode child)
     {
@@ -60,7 +71,7 @@ public class SettingNode
         return false;
     }
     // Try to get a cached instance or load via loader
-    public bool TryGetSetting(ISettingLoader loader, out ScriptableObject so) // Return ScriptableObject
+    public bool TryGetSetting(out ScriptableObject so) // Return ScriptableObject
     {
         so = null;
         if (_cache != null && _cache.TryGetTarget(out so))
@@ -69,20 +80,32 @@ public class SettingNode
              else _cache = null;
         }
 
-        if (loader == null) { /* ... error log ... */ return false; }
+        if (_settingLoader == null) { /* ... error log ... */ return false; }
 
-        so = loader.Load(this); // Load returns ScriptableObject
+        so = _settingLoader.Load(this); // Load returns ScriptableObject
+        if (CacheReference(so)) return true;
+        return false;
+    }
+
+    private bool CacheReference(ScriptableObject so)
+    {
         if (so != null)
         {
+            if(so is ISettingsObject settingsObject)
+            {
+                settingsObject.OnLoaded(this); // Call OnLoaded if applicable
+            }
+            
             // No GUID check needed/possible on the loaded object itself
             _cache = new WeakReference<ScriptableObject>(so);
             return true;
         }
+
         return false;
     }
 
     // Load asynchronously
-    public async Task<ScriptableObject> LoadAsync(ISettingLoader loader) // Return ScriptableObject
+    public async Task<ScriptableObject> LoadAsync() // Return ScriptableObject
     {
         ScriptableObject so = null;
         if (_cache != null && _cache.TryGetTarget(out so))
@@ -91,14 +114,10 @@ public class SettingNode
              else _cache = null;
         }
 
-        if (loader == null) { /* ... error log ... */ return null; }
+        if (_settingLoader == null) { /* ... error log ... */ return null; }
 
-        so = await loader.LoadAsync(this); // Load returns ScriptableObject
-        if (so != null)
-        {
-            // No GUID check needed/possible
-            _cache = new WeakReference<ScriptableObject>(so);
-        }
+        so = await _settingLoader.LoadAsync(this); // Load returns ScriptableObject
+        if (CacheReference(so)) return so;
         return so;
     }
     
