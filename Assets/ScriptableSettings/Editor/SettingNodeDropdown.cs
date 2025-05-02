@@ -10,9 +10,10 @@ namespace Scriptable.Settings.Editor
     {
         private readonly Func<SettingNode,bool> _typeValidityCheck;
 
-        public SettingNodeDropdown(string label, Func<IEnumerable<SettingNode>> itemProvider, Func<SettingNode, bool> typeValidityCheck = null) : base(label,
-            itemProvider)
+        public SettingNodeDropdown(string label, Func<IEnumerable<SettingNode>> itemProvider, Func<SettingNode, bool> typeValidityCheck = null) : base()
         {
+            base.label = label;
+            base._itemProvider = itemProvider;
             _typeValidityCheck = typeValidityCheck;
         }
 

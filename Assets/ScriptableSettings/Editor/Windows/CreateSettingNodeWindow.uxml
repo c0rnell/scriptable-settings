@@ -1,0 +1,12 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:VisualElement name="root" style="flex-grow: 1;">
+        <ui:Label text="Enter Node Details" name="Caption" class="caption" style="-unity-font-style: bold; -unity-text-align: upper-center; font-size: 18px; margin-bottom: 14px; margin-top: 10px;" />
+        <ui:TextField label="Parent" readonly="true" select-all-on-mouse-up="false" select-all-on-focus="false" select-word-by-double-click="false" select-line-by-triple-click="false" emoji-fallback-support="false" name="Parent" />
+        <ui:TextField label="Name" placeholder-text="new setting name" name="Name" />
+        <TypeSelectorDropdown type="UnityEngine.ScriptableObject, UnityEngine.CoreModule" label="Type" style="flex-grow: 0;" />
+        <ui:VisualElement name="Butons" style="flex-grow: 0; flex-direction: row; align-items: stretch; justify-content: center; margin-top: 20px;">
+            <ui:Button text="Create" name="Create" style="padding-right: 10px; font-size: 15px; margin-right: 10px;" />
+            <ui:Button text="Cancel" name="Cancel" style="background-color: rgb(161, 36, 36); font-size: 15px; padding-left: 10px; margin-left: 10px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

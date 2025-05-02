@@ -5,18 +5,31 @@ using System.Linq;
 using System.Collections.Generic;
 using Scriptable.Settings.Editor;
 using UnityEditor.Search;
+using UnityEngine;
 
 /// <summary>
 /// Internal popup window showing a searchable tree view of namespaces and types.
 /// </summary>
 
 
-public class TypeSelectorDropdown : SelectorPopupField<Type>
+[UxmlElement]
+public partial class TypeSelectorDropdown : SelectorPopupField<Type>
 {
-    public TypeSelectorDropdown(string label, Func<IEnumerable<Type>> itemProvider) : base(label, itemProvider)
+    
+    [UxmlAttribute]
+    [UxmlTypeReference(typeof(Type))]
+    public Type type { get; set; }
+    
+    public TypeSelectorDropdown()
     {
+        // Default to showing all class types
+        _itemProvider = GetAllClassTypes;
     }
-
+    
+    public void SetItemProvider(Func<IEnumerable<Type>> itemProvider)
+    {
+        _itemProvider = itemProvider;
+    }
     protected override SelectorPopupWindow<Type> ShowSelectionWindow(Func<Type, string, bool> onTypeChosen,
         Func<IEnumerable<Type>> itemProvider, VisualElement positionParent)
     {
@@ -27,13 +40,19 @@ public class TypeSelectorDropdown : SelectorPopupField<Type>
             }, value);
     }
     
-    private static IEnumerable<Type> GetAllClassTypes()
+    private IEnumerable<Type> GetAllClassTypes()
     {
         return AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
-            .Where(t => t.IsClass)
+            .Where(t => t.IsClass && (type == null|| type.IsAssignableFrom(t)))
             .OrderBy(t => t.Namespace ?? string.Empty)
             .ThenBy(t => t.Name);
+    }
+
+    public override void SetValueWithoutNotify(Type newValue)
+    {
+        base.SetValueWithoutNotify(newValue);
+        _textElement.text = newValue.Name;
     }
 }
 

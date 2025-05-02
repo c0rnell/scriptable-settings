@@ -12,16 +12,16 @@ namespace Scriptable.Settings.Editor
 {
     public class SettingNodesTreeView : VisualElement
     {
-        public event Action<VisualElement, SettingNode> AddChildNodeClicked;
-        public event Action<VisualElement, SettingNode> RemoveNodeClicked;
+        /*public event Action<VisualElement, SettingNode> AddChildNodeClicked;
+        public event Action<VisualElement, SettingNode> RemoveNodeClicked;*/
         public event Action<VisualElement, SettingNode, string> NodeRenamed;
         public event Action<VisualElement, SettingNode, SettingNode> NodeMoved;
         public event Action<SettingNode> selectionChanged;
 
         public SettingNode Selected => _selectedNode;
-        
+        public const string TreeItemName = "TreeItem";
+
         private readonly TreeView _treeView;
-        private readonly ToolbarSearchField _searchField;
         private readonly List<TreeViewItemData<SettingNode>> _treeRootData = new List<TreeViewItemData<SettingNode>>();
 
         private VisualElement _renaming;
@@ -29,7 +29,7 @@ namespace Scriptable.Settings.Editor
         private SettingNode _selectedNode;
         public SettingNodesTreeView(VisualTreeAsset settingItem) : base()
         {
-            _searchField = new ToolbarSearchField { name = "search-field", style = { marginBottom = 4, width = Length.Auto() }};
+            /*_searchField = new ToolbarSearchField { name = "search-field", style = { marginBottom = 4, width = Length.Auto() }};
             _searchField.RegisterValueChangedCallback(evt =>
             {
                 PopulateTreeView();
@@ -39,7 +39,7 @@ namespace Scriptable.Settings.Editor
             
             var addRootButton = new Button() { text = "+" };
             addRootButton.clicked += () => AddChildNodeClicked?.Invoke(addRootButton, null);
-            Add(addRootButton);
+            Add(addRootButton);*/
             
             _treeView = new TreeView();
             _treeView.focusable = true;
@@ -47,7 +47,7 @@ namespace Scriptable.Settings.Editor
             
             _treeView.makeItem = () =>
             {
-                var ve = new VisualElement();
+                var ve = new VisualElement() { name = TreeItemName };
                 settingItem.CloneTree(ve);
                 ve.focusable = true;
                 ve.RegisterCallback<KeyDownEvent, VisualElement>(OnKeyDown, ve);
@@ -65,12 +65,12 @@ namespace Scriptable.Settings.Editor
                 var node = _treeView.GetItemDataForIndex<SettingNode>(index);
                 element.userData = node;
                 
-                addButton.userData = node;
+                /*addButton.userData = node;
                 addButton.RegisterCallback<ClickEvent>(OnSelectedAdd);
 
                 var removeButton = element.Q<Button>("Remove");
                 removeButton.userData = node;
-                removeButton.RegisterCallback<ClickEvent>(OnSelectedRemove);
+                removeButton.RegisterCallback<ClickEvent>(OnSelectedRemove);*/
                 
                 if (node != null)
                 {
@@ -85,11 +85,11 @@ namespace Scriptable.Settings.Editor
 
             _treeView.unbindItem = (element, index) =>
             {
-                var addButton = element.Q<Button>("Add");
+                /*var addButton = element.Q<Button>("Add");
                 var removeButton = element.Q<Button>("Remove");
                 
                 addButton.UnregisterCallback<ClickEvent>(OnSelectedAdd);
-                removeButton.UnregisterCallback<ClickEvent>(OnSelectedRemove);
+                removeButton.UnregisterCallback<ClickEvent>(OnSelectedRemove);*/
             };
             
             _treeView.selectionChanged += OnSelectionChange;
@@ -181,24 +181,6 @@ namespace Scriptable.Settings.Editor
             selectionChanged?.Invoke(_selectedNode);
         }
 
-        private void OnSelectedAdd(ClickEvent evt)
-        {
-            if (evt.currentTarget is Button addButton)
-            {
-                var parentNode = (SettingNode)addButton.userData;
-                AddChildNodeClicked?.Invoke(addButton, parentNode);
-            }
-        }
-
-        private void OnSelectedRemove(ClickEvent evt)
-        {
-            if (evt.currentTarget is Button addButton)
-            {
-                var deleteNode = (SettingNode)addButton.userData;
-                RemoveNodeClicked?.Invoke(addButton, deleteNode);
-            }
-        }
-
         private static void SetFileOrFolder(SettingNode node, VisualElement element)
         {
             var item = element.Q("Item");
@@ -214,7 +196,7 @@ namespace Scriptable.Settings.Editor
             else
             {
                 item.AddToClassList("setting-item-file");
-                icon.style.backgroundImage = new StyleBackground((Texture2D)EditorIcons.ScriptableObject) ;
+                icon.style.backgroundImage = new StyleBackground((Texture2D)EditorIcons.EmptyFolder) ;
             }
         }
 
@@ -230,7 +212,7 @@ namespace Scriptable.Settings.Editor
             return new TreeViewItemData<SettingNode>(currentId, node, childrenData);
         }
         
-        public void PopulateTreeView()
+        public void PopulateTreeView(string filter = null)
         {
             _treeView.Clear();
             _treeRootData.Clear();
@@ -242,9 +224,9 @@ namespace Scriptable.Settings.Editor
             }
             // Build tree view item data (IDs and mapping) recursively
             IEnumerable<SettingNode> nodesToDisplay =
-                string.IsNullOrEmpty(_searchField.value) ?
+                string.IsNullOrEmpty(filter) ?
                 _settingsManager.SettingTree
-                : _settingsManager.GetAllNodes().Where(x => FuzzySearch.FuzzyMatch(_searchField.value, x.Name));
+                : _settingsManager.GetAllNodes().Where(x => FuzzySearch.FuzzyMatch(filter, x.Name));
             
             // Filter nodes based on search field
             
@@ -265,7 +247,14 @@ namespace Scriptable.Settings.Editor
         public void SelectNode(SettingNode node)
         {
             _selectedNode = node;
-            _treeView.ExpandAndSelect(_treeRootData, _selectedNode);
+            _treeView.ExpandAndSelect(_treeRootData, _selectedNode, true);
+        }
+
+        public void Deselect(VisualElement visualElement)
+        {
+            if(visualElement != null)
+                visualElement.RemoveFromClassList("drag-hover");
+            _treeView.selectedIndex = -1;
         }
         
         void OnKeyDown(KeyDownEvent evt, VisualElement elem)

@@ -27,6 +27,10 @@ namespace Scriptable.Settings.Editor
         private SettingNodeVisual _inspectorPanel; 
         private ObjectField _managerField;
         private Button _newManagerButton;
+        private ToolbarButton _addButton;
+        private ToolbarButton _removeButton;
+        private VisualElement _focusedOut;
+        private VisualElement _leftPane;
 
         [MenuItem("Window/Settings Manager Editor")]
         public static void ShowWindow()
@@ -73,6 +77,7 @@ namespace Scriptable.Settings.Editor
             // Each editor window contains a root VisualElement object
             VisualElement root = rootVisualElement;
 
+            
             // Instantiate UXML
             if (visualTree == null)
             {
@@ -93,14 +98,12 @@ namespace Scriptable.Settings.Editor
             _treeView = new SettingNodesTreeView(settingItem);
             _inspectorPanel = new SettingNodeVisual();
             var rightPane = root.Q<VisualElement>("right-pane");
-            var leftPane = root.Q<VisualElement>("left-pane");
-            leftPane.Add(_treeView);
+            _leftPane = root.Q<VisualElement>("left-pane");
+            _leftPane.Add(_treeView);
             rightPane.Add(_inspectorPanel);
             
             _managerField = root.Q<ObjectField>("manager-field");
             _managerField.objectType = typeof(SettingsManager);
-
-
             // Setup Object Field for Manager Asset
             _managerField.RegisterValueChangedCallback(evt =>
             {
@@ -115,10 +118,21 @@ namespace Scriptable.Settings.Editor
 
             // Setup Button Callbacks
             _treeView.selectionChanged += SelectNode;
-            _treeView.RemoveNodeClicked += RemoveNode;
-            _treeView.AddChildNodeClicked += CreateNode;
             _treeView.NodeRenamed += RenameNode;
             _treeView.NodeMoved += MoveNode;
+
+            _addButton = _leftPane.Q<ToolbarButton>("Add");
+            _addButton.RegisterCallback<ClickEvent>(CreateNode);
+            _removeButton = _leftPane.Q<ToolbarButton>("Remove");
+            _removeButton.RegisterCallback<ClickEvent>(RemoveNode);
+            
+            _treeView.RegisterCallback<KeyDownEvent>(OnKeyDown);
+            root.RegisterCallback<FocusOutEvent>(OnLoseTreeFocus);
+            root.RegisterCallback<FocusInEvent>(OnGainFocus);
+
+            var search = _leftPane.Q<ToolbarSearchField>("TreeSearch");
+            search.RegisterValueChangedCallback((val) => _treeView.PopulateTreeView(val.newValue));
+            
 
             if (_settingsManager == null)
             {
@@ -134,6 +148,73 @@ namespace Scriptable.Settings.Editor
             // Handle selection changes in the Project window
             // Note: This might conflict slightly with the ObjectField, choose one primary method
             // UnityEditor.Selection.selectionChanged += HandleProjectSelectionChange;
+            
+            var savedSelection = EditorPrefs.GetString("SelectedNode", null);
+            if(string.IsNullOrEmpty(savedSelection) == false
+               && _settingsManager != null
+               && Guid.TryParse(savedSelection, out var guid))
+            {
+                _treeView.SelectNode(_settingsManager.GetNodeById(guid));
+            }
+            
+        }
+
+        private void OnGainFocus(FocusInEvent evt)
+        {
+            if(evt.target == _leftPane && _focusedOut != null)
+            {
+                _treeView.Deselect(_focusedOut);
+            }
+
+            _focusedOut = null;
+        }
+
+        private void OnLoseTreeFocus(FocusOutEvent evt)
+        {
+            if ((evt.target is VisualElement visualElement && visualElement.name == SettingNodesTreeView.TreeItemName))
+                _focusedOut = visualElement;
+        }
+
+        private void OnKeyDown(KeyDownEvent evt)
+        {
+            if (evt.keyCode == KeyCode.Delete)
+            {
+                RemoveNode(null);
+            }
+            
+            if(evt.altKey && evt.keyCode == KeyCode.Return)
+            {
+                CreateNode(null);
+            }
+        }
+
+        private void RemoveNode(ClickEvent evt)
+        {
+            var nodeToRemove = _treeView.Selected;
+            if (_settingsManager == null || nodeToRemove == null) return;
+
+            DeleteNodeWindow.ShowModal((deleteAsset) =>
+            {
+                if (_treeView.Selected == nodeToRemove)
+                {
+                    _inspectorPanel.ClearInspector();
+                }
+
+                var parent = nodeToRemove.Parent;
+                _settingsManager.DeleteNode(nodeToRemove, deleteAsset);
+                _treeView.PopulateTreeView();
+                _treeView.SelectNode(parent);
+                // Refresh tree
+            }, _removeButton);
+        }
+
+        private void CreateNode(ClickEvent evt)
+        {
+            if (_settingsManager == null) return;
+
+            var nodeParent = _treeView.Selected;
+            CreateSettingNodeWindow.ShowWindow((type, newNodeName) => { CreateNode(nodeParent, newNodeName, type); }, nodeParent, _addButton);
+
         }
 
         private void MoveNode(VisualElement arg1, SettingNode moveNode, SettingNode targetNode)
@@ -147,14 +228,7 @@ namespace Scriptable.Settings.Editor
         {
             _settingsManager.RenameNode(node, newName);
         }
-
-        private void CreateNode(VisualElement visualElement, SettingNode nodeParent)
-        {
-            if (_settingsManager == null) return;
-
-            CreateSettingNodeWindow.ShowWindow((type, newNodeName) => { CreateNode(nodeParent, newNodeName, type); }, nodeParent, visualElement);
-        }
-
+        
         private void CreateNode(SettingNode nodeParent, string newNodeName, Type type)
         {
             SettingNode newNode = _settingsManager.CreateNode(nodeParent, newNodeName, type); // Pass selected node as parent
@@ -164,24 +238,7 @@ namespace Scriptable.Settings.Editor
                 _treeView.SelectNode(newNode);
             }
         }
-
-        private void RemoveNode(VisualElement visualElement, SettingNode nodeToRemove)
-        {
-            if (_settingsManager == null || nodeToRemove == null) return;
-
-            DeleteNodeWindow.ShowModal((deleteAsset) =>
-            {
-                if (_treeView.Selected == nodeToRemove)
-                {
-                    _inspectorPanel.ClearInspector();
-                }
-
-                _settingsManager.DeleteNode(nodeToRemove, deleteAsset);
-                _treeView.PopulateTreeView();// Refresh tree
-            }, visualElement);
-            
-        }
-
+        
         // --- Manager Selection ---
 
         private void SelectManagerFromProjectSelection()
@@ -219,19 +276,14 @@ namespace Scriptable.Settings.Editor
             }
         }
 
-        // Recursive helper to build the data structure for the tree view
-        private void OnTreeSelectionChanged(IEnumerable<object> selectedItems)
-        {
-            SettingNode selectedId = selectedItems.FirstOrDefault() as SettingNode;
-            SelectNode(selectedId);
-        }
-
         private void SelectNode(SettingNode selected)
         {
             if (selected != null)
                 _inspectorPanel.ShowNodeInInspector(_settingsManager, selected);
             else
                 _inspectorPanel.ClearInspector();
+            
+            EditorPrefs.SetString("SelectedNode", selected?.Guid.ToString() ?? string.Empty);
         }
         // --- Helper (Refactor from SettingsManagerEditor) ---
     }

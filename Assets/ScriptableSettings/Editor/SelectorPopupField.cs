@@ -14,7 +14,7 @@ using UnityEngine.UIElements;
 [UxmlElement]
 public abstract partial class SelectorPopupField<T> : BaseField<T>
 {
-    private readonly Func<IEnumerable<T>> _itemProvider;
+    protected  Func<IEnumerable<T>> _itemProvider;
     
     private readonly VisualElement _arrowElement;
     private VisualElement _visualElement;
@@ -25,15 +25,9 @@ public abstract partial class SelectorPopupField<T> : BaseField<T>
 
     public SelectorPopupField() : base(null, null)
     {
-    }
-    
-    public SelectorPopupField(string label, Func<IEnumerable<T>> itemProvider) : base(label, new VisualElement())
-    { 
-        _itemProvider = itemProvider;
         _visualElement = this.Query(null, BaseField<T>.inputUssClassName).First();
         AddToClassList(BasePopupField<T, T>.ussClassName);
         labelElement.AddToClassList(BasePopupField<T, T>.labelUssClassName);
-        labelElement.style.minWidth = new StyleLength(60);
         TextElement popupTextElement = new TextElement();
         popupTextElement.pickingMode = PickingMode.Ignore;
         _textElement = (TextElement) popupTextElement;

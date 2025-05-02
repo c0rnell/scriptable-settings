@@ -10,8 +10,10 @@ namespace Scriptable.Settings.Editor
 {
     public class CreateSettingNodeWindow : EditorWindow
     {
+        public VisualTreeAsset visualTree;
+        
         private TextField nodeNameField;
-        private SelectorPopupField<Type> nodeTypeField; // Or PopupField depending on preference
+        private TypeSelectorDropdown nodeTypeField; // Or PopupField depending on preference
         private Button createButton;
         private Button cancelButton;
 
@@ -35,76 +37,34 @@ namespace Scriptable.Settings.Editor
 
         public void CreateGUI()
         {
-            /*typeMapping.Clear();
-
-            foreach (var settingType in FindSettingTypes())
-            {
-                // Add each setting type to the mapping
-                typeMapping.Add(settingType.Name, settingType);
-            }*/
-
             // Get a reference to the root of the window.
             VisualElement root = rootVisualElement;
 
-            // --- Style Sheet (Optional but Recommended) ---
-            // You can create a .uss file and load it here for styling.
-            // Example: var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/Editor/CreateNodeWindow.uss");
-            // root.styleSheets.Add(styleSheet);
+            visualTree.CloneTree(root);
+           
+            var parentField = root.Q<TextField>("Parent");
+            parentField.style.display = _parent == null ? DisplayStyle.None : DisplayStyle.Flex;
+            parentField.value = _parent?.Name;
 
-
-            // --- Title Label ---
-            Label titleLabel = new Label("Enter Node Details");
-            titleLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
-            titleLabel.style.fontSize = 18;
-            titleLabel.style.marginBottom = 10;
-            root.Add(titleLabel);
-
-            // --- Name Field ---
-            nodeNameField = new TextField();
-            nodeNameField.value = "New Node"; // Default name
-            nodeNameField.style.marginBottom = 5;
-            root.Add(nodeNameField);
-
-
-            nodeTypeField = new TypeSelectorDropdown("Type", FindSettingTypes) { style = { flexGrow = 1}}; // Select the first item by default
-            nodeTypeField.style.marginBottom = 10;
-            nodeTypeField.RegisterValueChangedCallback(evt =>
+            nodeNameField = root.Q<TextField>("Name");
+            
+            nodeTypeField = root.Q<TypeSelectorDropdown>();
+            nodeTypeField.SetItemProvider(FindSettingTypes);
+            var typeOptions = FindSettingTypes();
+            if (typeOptions.Count == 1)
             {
-                // Update the selected type when the dropdown value changes
-                Type selectedType = evt.newValue;
-                nodeTypeField.value = selectedType;
-            });
-            root.Add(nodeTypeField);
-
-            // --- Buttons Container ---
-            VisualElement buttonContainer = new VisualElement();
-            buttonContainer.style.flexDirection = FlexDirection.Row;
-            buttonContainer.style.justifyContent = Justify.FlexEnd; // Align buttons to the right
-            buttonContainer.style.marginTop = 10;
-            root.Add(buttonContainer);
-
-            // --- Cancel Button ---
-            cancelButton = new Button(Close);
-            cancelButton.text = "Cancel";
-            cancelButton.style.marginRight = 5; // Add some space between buttons
-            buttonContainer.Add(cancelButton);
-
-            // --- Create Button ---
-            createButton = new Button(() =>
+                nodeTypeField.SetValueWithoutNotify(typeOptions[0]);
+            }
+            
+            
+            root.Q<Button>("Create").RegisterCallback<ClickEvent>((click) =>
             {
-                // Call the callback action with the selected type and name
                 onCreateConfirmed?.Invoke(nodeTypeField.value, nodeNameField.value);
-
-                Close(); // Close the window after creation
+                Close();
             });
-            createButton.text = "Create";
-            buttonContainer.Add(createButton);
-
-            // --- Basic Layout/Padding ---
-            root.style.paddingTop = 10;
-            root.style.paddingBottom = 10;
-            root.style.paddingLeft = 10;
-            root.style.paddingRight = 10;
+            
+            root.Q<Button>("Cancel").RegisterCallback<ClickEvent>((click) => Close());
+            
         }
 
         // Helper method to find types inheriting from a base type (Example)

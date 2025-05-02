@@ -31,7 +31,7 @@ namespace Scriptable.Settings.Editor
              _header.Add(guidElement);
              guidElement.Add(new Label($"GUID: {node.Guid}"));
 
-             _header.Add(new TextElement() { text = $"Node Type: {node.SettingType.FullName}"});
+            // _header.Add(new TextElement() { text = $"Node Type: {node.SettingType.FullName}"});
              // Add a separator
              _header.Add(new VisualElement() { style = { height = 1, backgroundColor = new StyleColor(new Color(0.35f,.35f,.35f)), marginTop = 5, marginBottom = 5 } });
 
