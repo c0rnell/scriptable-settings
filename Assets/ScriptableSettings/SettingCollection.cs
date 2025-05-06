@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace DefaultNamespace
+namespace Scriptable.Settings
 {
     public class SettingCollection : ScriptableObject, ISettingCollection
     {

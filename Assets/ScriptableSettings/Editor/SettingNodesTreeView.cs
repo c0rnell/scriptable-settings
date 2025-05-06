@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ScriptableSettings;
 using UnityEditor;
 using UnityEditor.Search;
 using UnityEditor.UIElements;
@@ -136,7 +135,9 @@ namespace Scriptable.Settings.Editor
                 
             ve.RegisterCallback<DragEnterEvent, VisualElement>((evt, elm)  =>
             {
-                elm.AddToClassList("drag-hover");
+                if(elm.userData != DragAndDrop.GetGenericData("UserData"))
+                    elm.AddToClassList("drag-hover");
+                DragAndDrop.visualMode = DragAndDropVisualMode.Move;
             }, ve);
 
             ve.RegisterCallback<DragLeaveEvent, VisualElement>((evt, elm)  =>

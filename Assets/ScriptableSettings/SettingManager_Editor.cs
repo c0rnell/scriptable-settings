@@ -1,6 +1,4 @@
-
 #if UNITY_EDITOR
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +6,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace ScriptableSettings
+namespace Scriptable.Settings
 {
     public partial class SettingsManager
     {
@@ -27,6 +25,12 @@ namespace ScriptableSettings
         {
             BuildIndexAndParentsIfNeeded();
             return nodeIndex.Values.ToList().AsReadOnly();
+        }
+        
+        public SettingNode CreateNode<T>(SettingNode parent, string name)
+            where T : ScriptableObject // Constraint Changed
+        {
+            return CreateNode(parent, name, typeof(T));
         }
 
         public SettingNode CreateNode(SettingNode parent, string name, Type type)
@@ -75,8 +79,10 @@ namespace ScriptableSettings
             // Ensure asset name matches node name if desired, or keep them separate
             EditorUtility.SetDirty(asset); // Mark asset dirty just in case
 
+            name = Path.GetFileName(assetPath).Replace(".asset", ""); // Get the name without extension
+            
             // 6. Create the SettingNode (stores name, type T, and assetGuid)
-            var node = new SettingNode(name, type, assetGuid, loader);
+            var node = new SettingNode(name, type, assetGuid, Loader);
 
             // 7. Insert node into the tree
             if (parent != null)
@@ -93,10 +99,6 @@ namespace ScriptableSettings
 
             EditorUtility.SetDirty(this); // Mark manager dirty
 
-
-            // 8. Rebuild index
-            //BuildIndexAndParentsIfNeeded();
-
             // 9. Save changes
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -107,6 +109,117 @@ namespace ScriptableSettings
             return node;
         }
 
+        public enum ExistingAssetOperation
+        {   
+            Move,
+            Duplicate,
+            SaveInstance
+        }
+        
+        public SettingNode CreateNode<T>(SettingNode parent, string name, T source, ExistingAssetOperation operation)
+            where T : ScriptableObject // Constraint Changed
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                Debug.LogError("Cannot create SettingNode with an empty name.");
+                return null;
+            }
+
+            // 1. Determine folder path for the new asset
+            var folderPath = GetParentBasedFolder(parent);
+
+            // Sanitize name to be a valid filename
+            string sanitizedName = MakeValidFileName(name);
+            if (string.IsNullOrEmpty(sanitizedName))
+            {
+                Debug.LogError($"Failed to create valid filename from '{name}'.");
+                return null;
+            }
+
+            // 3. Create the asset file
+            var assetPath = $"{folderPath}/{sanitizedName}.asset";
+            var uniqueAssetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
+
+            switch (operation)
+            {
+                case ExistingAssetOperation.Duplicate:
+                    AssetDatabase.CreateAsset(ScriptableObject.Instantiate(source), uniqueAssetPath);
+                    break;
+                case ExistingAssetOperation.SaveInstance:
+                    AssetDatabase.CreateAsset(source, uniqueAssetPath);
+                    break;
+                case ExistingAssetOperation.Move:
+                    var sourcePath = AssetDatabase.GetAssetPath(source);
+                    if (string.IsNullOrEmpty(sourcePath))
+                    {
+                        Debug.LogError($"Failed to find asset path for source '{source.name}'.");
+                        return null;
+                    }
+
+                    if (sourcePath == assetPath)
+                    {
+                        uniqueAssetPath = sourcePath;
+                        break;
+                    }
+
+                    // Move the asset to the new path
+                    string moveResult = AssetDatabase.MoveAsset(sourcePath, assetPath);
+                    if (!string.IsNullOrEmpty(moveResult)) // MoveAsset returns error string on failure
+                    {
+                        Debug.LogError($"Failed to move asset from '{sourcePath}' to '{assetPath}': {moveResult}", this);
+                        return null; // Abort if asset move failed
+                    }
+                    break;
+                    
+            }
+            // 4. Get the GUID
+            var assetGuidString = AssetDatabase.AssetPathToGUID(uniqueAssetPath);
+            if (string.IsNullOrEmpty(assetGuidString))
+            {
+                /* ... error log, cleanup ... */
+                return null;
+            }
+
+            var assetGuid = new Guid(assetGuidString);
+            var asset = AssetDatabase.LoadAssetAtPath<T>(uniqueAssetPath);
+            if (asset is ISettingsObject settingsObject)
+            {
+                settingsObject.OnCreated(); // Call OnCreated if applicable
+            }
+
+            // Ensure asset name matches node name if desired, or keep them separate
+            EditorUtility.SetDirty(asset); // Mark asset dirty just in case
+
+            name = Path.GetFileName(uniqueAssetPath).Replace(".asset", ""); // Get the name without extension
+            
+            // 6. Create the SettingNode (stores name, type T, and assetGuid)
+            var node = new SettingNode(name, asset.GetType(), assetGuid, Loader);
+
+            // 7. Insert node into the tree
+            if (parent != null)
+            {
+                parent.AddChild(node);
+            }
+            else
+            {
+                roots.Add(node);
+            }
+
+            indexBuilt = false;
+            BuildIndexAndParentsIfNeeded();
+
+            EditorUtility.SetDirty(this); // Mark manager dirty
+
+            // 9. Save changes
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log(
+                $"Created Setting Node '{node.Name}' linked to asset '{asset.name}' ({node.Guid}) under parent '{(parent?.Name ?? "Root")}'.",
+                this);
+            return node;
+        }
+        
         private string GetParentBasedFolder(SettingNode parent)
         {
             string parentAssetFolderPath = ""; // Default path
@@ -132,11 +245,7 @@ namespace ScriptableSettings
             return folderPath;
         }
 
-        public SettingNode CreateNode<T>(SettingNode parent, string name)
-            where T : ScriptableObject // Constraint Changed
-        {
-            return CreateNode(parent, name, typeof(T));
-        }
+        
 
         public void DeleteNode(SettingNode node, bool deleteAsset = true)
         {
@@ -246,12 +355,17 @@ namespace ScriptableSettings
 
             var fileName = Path.GetFileName(oldPath);
             var newPath = Path.Combine(destFolderPath, fileName);
-            newPath = AssetDatabase.GenerateUniqueAssetPath(newPath); // Ensure unique path in destination
+             // Ensure unique path in destination
 
 
             // 3. Move the asset file if the path changes
             if (oldPath != newPath)
             {
+                if (!Directory.Exists(destFolderPath))
+                    Directory.CreateDirectory(destFolderPath);
+                
+                newPath = AssetDatabase.GenerateUniqueAssetPath(newPath);
+                
                 string moveResult = AssetDatabase.MoveAsset(oldPath, newPath);
                 if (!string.IsNullOrEmpty(moveResult)) // MoveAsset returns error string on failure
                 {
@@ -379,6 +493,117 @@ namespace ScriptableSettings
                 System.Text.RegularExpressions.Regex.Escape(new string(Path.GetInvalidFileNameChars()));
             string invalidRegStr = string.Format(@"([{0}]*\.+$)|([{0}]+)", invalidChars);
             return System.Text.RegularExpressions.Regex.Replace(name, invalidRegStr, "_");
+        }
+
+        public bool PasteNode(SettingNode nodeToCopy, SettingNode pasteTarget)
+        {
+            if (nodeToCopy == null || pasteTarget == null)
+            {
+                Debug.LogError("CopyAssetData: Source or destination asset is null.");
+                return false;
+            }
+
+            if (nodeToCopy.GetType() != pasteTarget.GetType())
+            {
+                Debug.LogError(
+                    $"CopyAssetData: Type mismatch. Cannot copy {nodeToCopy.GetType().Name} to {pasteTarget.GetType().Name}.");
+                return false;
+            }
+
+
+            if (nodeToCopy.TryGetSetting(out var source) && pasteTarget.TryGetSetting(out var destination))
+            {
+                try
+                {
+                    string json =
+                        EditorJsonUtility.ToJson(source, true); // Use prettyPrint: true for readability if needed
+                    Undo.RecordObject(destination, $"Paste {source.GetType().Name} Data");
+                    var previousName = destination.name;// Register Undo operation
+                    EditorJsonUtility.FromJsonOverwrite(json, destination);
+                    destination.name = previousName;
+                    EditorUtility.SetDirty(destination); // Mark the target asset as dirty so changes are saved
+                    // AssetDatabase.SaveAssets(); // Optional: Force save immediately, usually SetDirty is enough
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Failed to copy data from {source.name} to {destination.name}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            return false;
+        }
+        
+        public SettingNode DuplicateNode(SettingNode nodeToDuplicate)
+        {
+            if (nodeToDuplicate == null) return null;
+
+            // Duplicate recursively under the *original* parent
+            var newNode = DuplicateNodeRecursive(nodeToDuplicate, nodeToDuplicate.Parent);
+
+            // Add the top-level new node to the roots if its original parent was null
+            if (nodeToDuplicate.Parent == null && newNode != null && !roots.Contains(newNode))
+            {
+                roots.Add(newNode);
+            }
+
+            MarkDirtyAndRefresh(); // Save changes and rebuild index if needed
+            return newNode; // Return the newly created top-level node
+        }
+
+
+        // Recursive helper function for duplication
+        private SettingNode DuplicateNodeRecursive(SettingNode sourceNode, SettingNode newParent)
+        {
+            ScriptableObject sourceAsset = null;
+            if (sourceNode == null || sourceNode.TryGetSetting(out sourceAsset) == false) return null;
+
+            var newNode = CreateNode(newParent, sourceNode.Name, sourceAsset, ExistingAssetOperation.Duplicate);
+
+            // 3. Recursively duplicate children
+            foreach (var childSourceNode in sourceNode.Children)
+            {
+                // The recursive call handles adding children to newNode and the index
+                DuplicateNodeRecursive(childSourceNode, newNode);
+            }
+
+            return newNode;
+        }
+        private void MarkDirtyAndRefresh()
+        {
+            indexChanged = true; // Signal that serialization is needed
+            EditorUtility.SetDirty(this);
+            // Optional: Rebuild index immediately if needed for subsequent operations within the same frame.
+            // BuildIndexAndParentsIfNeeded(); // Usually OnBeforeSerialize handles this before saving
+        }
+    
+        public void BuildNodesFromPath(string sourcePath, SettingNode parent)
+        {
+            var assets = AssetDatabase.FindAssets("t: ScriptableObject", new []{sourcePath});
+            var items = assets.Select(AssetDatabase.GUIDToAssetPath)
+                .Where(path => Path.GetDirectoryName(path).Replace('\\', '/') == sourcePath)
+                .Select(path => (AssetDatabase.LoadAssetAtPath<ScriptableObject>(path), path))
+                .ToList();
+            
+            foreach (var item in items)
+            {
+                var node = CreateNode(parent, item.Item1.name, item.Item1, SettingsManager.ExistingAssetOperation.Move);
+
+                var folderPath = item.path.Replace(".asset", "");
+                if(AssetDatabase.IsValidFolder(folderPath))
+                {
+                    BuildNodesFromPath(folderPath, node);
+                }
+            }
+        }
+
+        // Be cautios because this will delete all nodes and serialised data
+        public void Nuke()
+        {
+            nodeIndex.Clear();
+            roots.Clear();
+            serializedNodes.Clear();
         }
     }
 }

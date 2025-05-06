@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using ScriptableSettings;
+using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine.UIElements;
 
@@ -14,6 +15,7 @@ namespace Scriptable.Settings.Editor
             var idProperty = property.FindPropertyRelative("i");
 
             Type targetType = GetGenericArgumentType(fieldInfo.FieldType);
+            
 
             var dropDown = new SettingNodeDropdown(property.name, GetAllSettingNodesOfType, 
                 (selected) => targetType.IsAssignableFrom(selected.SettingType));
@@ -22,6 +24,30 @@ namespace Scriptable.Settings.Editor
             
             IEnumerable<SettingNode> GetAllSettingNodesOfType()
             {
+                var customAttributes = GetAttribute<SettingSourceAttribute>();
+                if (customAttributes.Any())
+                {
+                    var nodes = new List<SettingNode>();
+
+                    foreach (var customAttribute in customAttributes)
+                    {
+                        for (var index = 0; index < customAttribute.SettingCollectionType.Length; index++)
+                        {
+                            var type = customAttribute.SettingCollectionType[index];
+                            var collections = SettingManagerHelper.Instance.GetNodesOfType(type).ToList();
+                            if(collections.Count() == 1 && customAttribute.SettingCollectionType.Length == 1)
+                                nodes.AddRange(collections.First().Children);
+                            else
+                            {
+                                nodes.AddRange(collections);
+                            }
+                        }
+                    }
+                    
+
+                    return nodes;
+                }
+                
                 return SettingManagerHelper.Instance.GetNodesOfType(targetType);
             }
             
@@ -66,5 +92,35 @@ namespace Scriptable.Settings.Editor
 
             throw new InvalidOperationException("Generic base type not found.");
         }
+        
+        private List<T> GetAttribute<T>() where T : Attribute
+        {
+            var attributes = new List<T>();
+            // 1. Check the field itself
+            //    'fieldInfo' is a property of the base PropertyDrawer class
+            T fieldAttribute = fieldInfo?.GetCustomAttribute<T>();
+            if (fieldAttribute != null)
+            {
+                attributes.Add(fieldAttribute);
+            }
+
+            // 2. Check the field's type and its base types
+            //    'fieldInfo.FieldType' gives you the System.Type of the field being drawn
+            Type fieldType = fieldInfo?.FieldType;
+            if (fieldType != null)
+            {
+                // The 'true' argument searches the inheritance chain
+                T typeAttribute = fieldType.GetCustomAttribute<T>(true);
+                if (typeAttribute != null)
+                {
+                    attributes.Add(typeAttribute);
+                }
+            }
+
+            // Attribute not found
+            return attributes;
+        }
     }
+    
+    
 }

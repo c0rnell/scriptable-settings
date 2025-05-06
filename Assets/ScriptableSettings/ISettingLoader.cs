@@ -1,17 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using UnityEngine; // For ScriptableObject
+﻿using System.Threading.Tasks;
+using UnityEngine;
 
-public interface ISettingLoader
+// For ScriptableObject
+
+namespace Scriptable.Settings
 {
-    // Load returns base ScriptableObject
-    ScriptableObject Load(SettingNode node);
+    public interface ISettingLoader
+    {
+        // Load returns base ScriptableObject
+        ScriptableObject Load(SettingNode node);
 
-    // LoadAsync returns base ScriptableObject
-    Task<ScriptableObject> LoadAsync(SettingNode node);
+        // LoadAsync returns base ScriptableObject
+        Task<ScriptableObject> LoadAsync(SettingNode node);
     
-    string NodeLoadPath(SettingNode node);
+        string NodeLoadPath(SettingNode node);
     
     
+    }
 }

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ScriptableSettings
+namespace Scriptable.Settings
 {
     [CreateAssetMenu(fileName = "SettingLoaderFactory", menuName = "Scriptable/Settings/SettingLoaderFactory")]
     public sealed class SettingLoaderFactory  : ScriptableObject

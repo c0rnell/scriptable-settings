@@ -1,4 +1,4 @@
-﻿namespace ScriptableSettings
+﻿namespace Scriptable.Settings
 {
     public interface ISettingsObject
     {

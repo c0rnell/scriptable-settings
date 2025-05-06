@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Scriptable.Settings.Editor.Tools;
-using ScriptableSettings;
 using UnityEditor.Search;
 using ObjectField = UnityEditor.UIElements.ObjectField;
 
@@ -31,12 +30,26 @@ namespace Scriptable.Settings.Editor
         private ToolbarButton _removeButton;
         private VisualElement _focusedOut;
         private VisualElement _leftPane;
+        
+        private SettingNode _clipboardNode;
 
         [MenuItem("Window/Settings Manager Editor")]
         public static void ShowWindow()
         {
+            GetOrCreateWindow();
+        }
+        public static void GoToSettingsNode(SettingNode value)
+        {
+            SaveSelection(value);
+            var window = GetOrCreateWindow();
+            window.Refresh();
+        }
+
+        private static SettingsManagerWindow GetOrCreateWindow()
+        {
             SettingsManagerWindow wnd = GetWindow<SettingsManagerWindow>();
             wnd.titleContent = new GUIContent("Settings Manager");
+            return wnd;
         }
 
         private void OnDestroy()
@@ -105,17 +118,6 @@ namespace Scriptable.Settings.Editor
             _managerField = root.Q<ObjectField>("manager-field");
             _managerField.objectType = typeof(SettingsManager);
             // Setup Object Field for Manager Asset
-            _managerField.RegisterValueChangedCallback(evt =>
-            {
-                CleanTools(_settingsManager);
-                _settingsManager = evt.newValue as SettingsManager;
-                _treeView.SetManager(_settingsManager);// Initialize loader if needed
-                _treeView.PopulateTreeView();
-                _inspectorPanel.ClearInspector();
-                SetupTools(_settingsManager);
-            });
-            // Set initial value
-
             // Setup Button Callbacks
             _treeView.selectionChanged += SelectNode;
             _treeView.NodeRenamed += RenameNode;
@@ -132,23 +134,34 @@ namespace Scriptable.Settings.Editor
 
             var search = _leftPane.Q<ToolbarSearchField>("TreeSearch");
             search.RegisterValueChangedCallback((val) => _treeView.PopulateTreeView(val.newValue));
-            
+
+            _managerField.RegisterValueChangedCallback(evt =>
+            {
+                CleanTools(_settingsManager);
+                _settingsManager = evt.newValue as SettingsManager;
+                _treeView.SetManager(_settingsManager);// Initialize loader if needed
+                SetupTools(_settingsManager);
+                Refresh();
+            });
 
             if (_settingsManager == null)
             {
                 SelectManagerFromProjectSelection();
             }
 
-            _managerField.value = _settingsManager;
+            Refresh();
+        }
 
+        private void Refresh()
+        {
             // Initial State
             _treeView.PopulateTreeView();// Populate based on initially loaded manager (if any)
             _inspectorPanel.ClearInspector();
+            SelectLastNode();
+        }
 
-            // Handle selection changes in the Project window
-            // Note: This might conflict slightly with the ObjectField, choose one primary method
-            // UnityEditor.Selection.selectionChanged += HandleProjectSelectionChange;
-            
+        private void SelectLastNode()
+        {
             var savedSelection = EditorPrefs.GetString("SelectedNode", null);
             if(string.IsNullOrEmpty(savedSelection) == false
                && _settingsManager != null
@@ -156,7 +169,6 @@ namespace Scriptable.Settings.Editor
             {
                 _treeView.SelectNode(_settingsManager.GetNodeById(guid));
             }
-            
         }
 
         private void OnGainFocus(FocusInEvent evt)
@@ -180,11 +192,60 @@ namespace Scriptable.Settings.Editor
             if (evt.keyCode == KeyCode.Delete)
             {
                 RemoveNode(null);
+                evt.StopPropagation();
             }
             
             if(evt.altKey && evt.keyCode == KeyCode.Return)
             {
                 CreateNode(null);
+                evt.StopPropagation();
+            }
+            
+            // Copy (Ctrl+C)
+            if (evt.ctrlKey && evt.keyCode == KeyCode.C)
+            {
+                if (_treeView.Selected != null)
+                {
+                    _clipboardNode = _treeView.Selected;
+                    Debug.Log($"Copied Node: {_treeView.Selected.Name} ({_treeView.Selected.Guid})"); // Optional feedback
+                    evt.StopPropagation();
+                }
+            }
+            // Paste (Ctrl+V)
+            else if (evt.ctrlKey && evt.keyCode == KeyCode.V)
+            {
+                if (_clipboardNode != null && _settingsManager != null)
+                {
+                    var nodeToCopy = _clipboardNode;
+                    if (nodeToCopy != null && _treeView.Selected != null)
+                    {
+                        // Determine paste target: selected node or root if none selected
+                        var pasteTargetParent = _treeView.Selected ?? null; // Paste under selected, or at root level
+
+                        var result = _settingsManager.PasteNode(nodeToCopy, pasteTargetParent);
+                        _treeView.PopulateTreeView(); 
+                        _treeView.SelectNode(pasteTargetParent);// Refresh the view
+                        // Optionally select the newly pasted node (requires PasteNode to return it)
+                        Debug.Log($"Pasted Node: {nodeToCopy.Name}"); // Optional feedback
+                        evt.StopPropagation();
+                    }
+                    else
+                    {
+                        _clipboardNode = null; // Clear clipboard if the source node doesn't exist anymore
+                    }
+                }
+            }
+            // Duplicate (Ctrl+D)
+            else if (evt.ctrlKey && evt.keyCode == KeyCode.D)
+            {
+                if (_treeView.Selected != null && _settingsManager != null)
+                {
+                    var newNode = _settingsManager.DuplicateNode(_treeView.Selected);
+                    _treeView.PopulateTreeView(); 
+                    _treeView.SelectNode(newNode);
+                    Debug.Log($"Duplicated Node: {_treeView.Selected.Name}"); // Optional feedback
+                    evt.StopPropagation();
+                }
             }
         }
 
@@ -245,16 +306,14 @@ namespace Scriptable.Settings.Editor
         {
             if (Selection.activeObject is SettingsManager manager)
             {
-                _settingsManager = manager;
-                if (_managerField != null) _managerField.value = _settingsManager; // Update UI field
-                // Don't populate tree here, CreateGUI might not be finished
+                _managerField.value = manager;
             }
-
+            
             _settingsManager = AssetDatabase.FindAssets("t:SettingsManager")
                 .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
                 .Select(path => AssetDatabase.LoadAssetAtPath<SettingsManager>(path))
                 .FirstOrDefault(manager => manager != null);
-
+            
             if (_settingsManager == null)
             {
                 var newButton = new Button() { text = "New Manager" };
@@ -274,6 +333,10 @@ namespace Scriptable.Settings.Editor
                     newButton.RemoveFromHierarchy(); // Remove the button
                 });
             }
+            else
+            {
+                _managerField.value = _settingsManager;
+            }
         }
 
         private void SelectNode(SettingNode selected)
@@ -282,7 +345,14 @@ namespace Scriptable.Settings.Editor
                 _inspectorPanel.ShowNodeInInspector(_settingsManager, selected);
             else
                 _inspectorPanel.ClearInspector();
-            
+
+            SaveSelection(selected);
+        }
+
+        private static void SaveSelection(SettingNode selected)
+        {
+            if(selected == null)
+                return;
             EditorPrefs.SetString("SelectedNode", selected?.Guid.ToString() ?? string.Empty);
         }
         // --- Helper (Refactor from SettingsManagerEditor) ---

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ScriptableSettings
+namespace Scriptable.Settings
 {
     public static class SettingManagerHelper
     {

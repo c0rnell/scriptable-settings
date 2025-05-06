@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine.Serialization;
 
-namespace ScriptableSettings
+namespace Scriptable.Settings
 {
     [Serializable]
     public class SettingNodeData {

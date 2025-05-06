@@ -3,8 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using DefaultNamespace; // Required for LINQ operations like .ToList()
+using System.Linq; // Required for LINQ operations like .ToList()
 
 namespace Scriptable.Settings.Editor
 {
@@ -32,7 +31,7 @@ namespace Scriptable.Settings.Editor
             window.onCreateConfirmed = onCreateCallback;
             window._parent = nodeParent;
             //window.Show();
-            window.ShowAsDropDown(GUIUtility.GUIToScreenRect(positionParent.worldBound), new Vector2(250, 150));
+            window.ShowAsDropDown(GUIUtility.GUIToScreenRect(positionParent.worldBound), new Vector2(350, 150));
         }
 
         public void CreateGUI()

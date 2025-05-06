@@ -25,6 +25,13 @@ namespace Scriptable.Settings.Editor
         protected override List<TreeViewItemData<SettingNode>> GroupItemsToTree(List<SettingNode> flat)
         {
             var rootItems = new List<TreeViewItemData<SettingNode>>();
+            
+            if (flat == null || flat.Count == 0)
+                return rootItems;
+            
+            if(flat.All(x => x.Parent == flat[0].Parent))
+                return flat.Select(SettingNodesTreeView.CreateTreeViewItemRecursive).ToList();
+            
             if (_wasSearched)
             {
                 foreach (var rootNode in flat)
@@ -35,19 +42,59 @@ namespace Scriptable.Settings.Editor
             else
             {
                 var existing = new List<SettingNode>();
+                var paths = new List<List<SettingNode>>();
                 foreach (var node in flat)
                 {
-                    var rootNode = node;
-                    while (rootNode.Parent != null)
+                    var path = new List<SettingNode>();
+                    var current = node;
+                    while (current != null)
                     {
-                        rootNode = rootNode.Parent;
+                        path.Insert(0, current); // reverse order: root -> leaf
+                        current = current.Parent;
                     }
-                    
-                    if(existing.Contains(rootNode))
+                    paths.Add(path);
+                }
+
+// Find the minimum common depth
+                int minCommonLength = paths.Min(p => p.Count);
+                int commonIndex = 0;
+
+                for (int i = 0; i < minCommonLength; i++)
+                {
+                    var reference = paths[0][i];
+                    if (paths.All(p => p[i] == reference))
+                        commonIndex = i + 1;
+                    else
+                        break;
+                }
+
+// Group by first differing node after the common path
+                var groups = new Dictionary<SettingNode, List<SettingNode>>();
+
+                foreach (var path in paths)
+                {
+                    // If path is shorter than divergence point, skip
+                    if (path.Count <= commonIndex)
                         continue;
+
+                    var groupKey = path[commonIndex]; // First differing parent
+                    if (!groups.ContainsKey(groupKey))
+                        groups[groupKey] = new List<SettingNode>();
+
+                    groups[groupKey].Add(path.Last());
+                }
+
+// Now use groups to build your tree
+                foreach (var kvp in groups)
+                {
+                    var groupRoot = kvp.Key;
+                    var children = kvp.Value;
                     
-                    existing.Add(rootNode);
-                    rootItems.Add(SettingNodesTreeView.CreateTreeViewItemRecursive(rootNode));
+                    if (!existing.Contains(groupRoot))
+                    {
+                        existing.Add(groupRoot);
+                        rootItems.Add(SettingNodesTreeView.CreateTreeViewItemRecursive(groupRoot));
+                    }
                 }
             }
 

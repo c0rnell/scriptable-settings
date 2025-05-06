@@ -15,6 +15,20 @@ namespace Scriptable.Settings.Editor
             base.label = label;
             base._itemProvider = itemProvider;
             _typeValidityCheck = typeValidityCheck;
+            
+            var goToButton = new Button(() =>
+            {
+                SettingsManagerWindow.GoToSettingsNode(value);
+            } ) 
+            {
+                name = "goToButton",
+                text = "",
+                tooltip = "Go to the selected setting node",
+                style = { width = 25}
+            };
+            goToButton.style.backgroundImage = new StyleBackground((Texture2D)EditorIcons.Aim);
+            goToButton.style.backgroundSize = new StyleBackgroundSize(new BackgroundSize(BackgroundSizeType.Contain));
+            Add(goToButton);
         }
 
         protected override SelectorPopupWindow<SettingNode> ShowSelectionWindow(Func<SettingNode, string, bool> onTypeChosen,

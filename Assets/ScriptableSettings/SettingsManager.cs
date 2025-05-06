@@ -2,17 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DefaultNamespace;
-using Scriptable.Settings.Editor;
-using ScriptableSettings;
-using SharpCompress;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-using System.IO;
-#endif
 
-namespace ScriptableSettings
+namespace Scriptable.Settings
 {
     [CreateAssetMenu(fileName = "SettingsManager", menuName = "Settings/Settings Manager")]
     public partial class SettingsManager : ScriptableObject, ISerializationCallbackReceiver

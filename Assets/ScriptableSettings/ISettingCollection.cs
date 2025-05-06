@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace DefaultNamespace
+namespace Scriptable.Settings
 {
     public interface ISettingCollection
     {

@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Scriptable.Settings.Editor
+namespace Scriptable.Settings
 {
     [Serializable]
     public class ScriptableSettingId<T> : ISerializationCallbackReceiver where T : ScriptableObject
