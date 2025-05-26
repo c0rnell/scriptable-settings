@@ -20,7 +20,7 @@ public partial class TypeSelectorDropdown : SelectorPopupField<Type>
     [UxmlTypeReference(typeof(Type))]
     public Type type { get; set; }
     
-    public TypeSelectorDropdown()
+    public TypeSelectorDropdown() : base()
     {
         // Default to showing all class types
         _itemProvider = GetAllClassTypes;
@@ -52,7 +52,7 @@ public partial class TypeSelectorDropdown : SelectorPopupField<Type>
     public override void SetValueWithoutNotify(Type newValue)
     {
         base.SetValueWithoutNotify(newValue);
-        _textElement.text = newValue.Name;
+        _textElement.text = newValue?.Name;
     }
 }
 

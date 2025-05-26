@@ -19,11 +19,17 @@ namespace Scriptable.Settings
         public ScriptableObject Asset => _cache != null && _cache.TryGetTarget(out ScriptableObject so) ? so : null;
     
         private List<SettingNode> children = new List<SettingNode>();
+        
+        public List<string> Errors = new List<string>();
+        
+        public bool IsValid => Errors.Count == 0;
     
         [NonSerialized] private WeakReference<ScriptableObject> _cache; // Weak reference to the loaded asset
         public IReadOnlyList<SettingNode> Children => children;
     
         private ISettingLoader _settingLoader;
+        
+        
 
         // --- Constructor (Used by Editor) ---
         public SettingNode(string name, Type settingType, Guid assetGuid, ISettingLoader settingLoader)
@@ -32,14 +38,20 @@ namespace Scriptable.Settings
             Assert.IsNotNull(_settingLoader);
         
             if (assetGuid == Guid.Empty)
-                throw new ArgumentException("Asset GUID cannot be empty for a new SettingNode.", nameof(assetGuid));
+                Errors.Add("Asset GUID cannot be empty for a new SettingNode!");
 
             Guid = assetGuid;
             Name = name;
         
-            SettingType = settingType ?? throw new ArgumentNullException(nameof(settingType));
-            if (!typeof(ScriptableObject).IsAssignableFrom(this.SettingType))
-                throw new ArgumentException($"Type '{settingType.FullName}' must inherit from ScriptableObject.", nameof(settingType));
+            SettingType = settingType;
+            if (SettingType == null)
+            {
+                Errors.Add($"Type of asset with {assetGuid} do not exists!");
+                return;
+            }  
+            
+            if(!typeof(ScriptableObject).IsAssignableFrom(this.SettingType))
+                Errors.Add($"Type '{settingType.FullName}' must inherit from ScriptableObject!");
         }
 
         // --- Runtime Methods ---
@@ -84,6 +96,36 @@ namespace Scriptable.Settings
             if (_settingLoader == null) { /* ... error log ... */ return false; }
 
             so = _settingLoader.Load(this); // Load returns ScriptableObject
+            if (CacheReference(so)) return true;
+            return false;
+        }
+        
+        public bool TryGetSetting<T>(out T settings) where T : ScriptableObject// Return ScriptableObject
+        {
+            settings = null;
+            if(typeof(T).IsAssignableFrom(this.SettingType) == false)
+            {
+                Debug.LogError($"Trying to get setting of wrong type {Name}({SettingType}) by {typeof(T).Name} !");
+                return false;
+            }
+
+            if (_cache != null && _cache.TryGetTarget(out var so))
+            {
+                if (so != null)
+                {
+                    settings = so as T;
+                    return true; // Use Unity's null check
+                }
+                else
+                {
+                    _cache = null;
+                }
+            }
+
+            if (_settingLoader == null) { /* ... error log ... */ return false; }
+
+            so = _settingLoader.Load(this);
+            settings = so as T;
             if (CacheReference(so)) return true;
             return false;
         }

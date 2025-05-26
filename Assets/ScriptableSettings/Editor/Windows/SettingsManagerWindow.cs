@@ -3,11 +3,9 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Scriptable.Settings.Editor.Tools;
-using UnityEditor.Search;
 using ObjectField = UnityEditor.UIElements.ObjectField;
 
 namespace Scriptable.Settings.Editor
@@ -21,7 +19,9 @@ namespace Scriptable.Settings.Editor
 
         [SerializeField] private VisualTreeAsset settingItem; // Assign USS file (Optional)
 
+        //[SerializeField][HideInInspector] 
         private SettingsManager _settingsManager;
+        
         private SettingNodesTreeView _treeView;
         private SettingNodeVisual _inspectorPanel; 
         private ObjectField _managerField;
@@ -122,6 +122,7 @@ namespace Scriptable.Settings.Editor
             _treeView.selectionChanged += SelectNode;
             _treeView.NodeRenamed += RenameNode;
             _treeView.NodeMoved += MoveNode;
+            _treeView.AssetsAdded += AddExistingAssets;
 
             _addButton = _leftPane.Q<ToolbarButton>("Add");
             _addButton.RegisterCallback<ClickEvent>(CreateNode);
@@ -133,14 +134,16 @@ namespace Scriptable.Settings.Editor
             root.RegisterCallback<FocusInEvent>(OnGainFocus);
 
             var search = _leftPane.Q<ToolbarSearchField>("TreeSearch");
-            search.RegisterValueChangedCallback((val) => _treeView.PopulateTreeView(val.newValue));
+            search.RegisterValueChangedCallback((val) =>
+            {
+                _treeView.PopulateTreeView(val.newValue);
+                if (string.IsNullOrEmpty(val.newValue))
+                    SelectLastNode();
+            });
 
             _managerField.RegisterValueChangedCallback(evt =>
             {
-                CleanTools(_settingsManager);
-                _settingsManager = evt.newValue as SettingsManager;
-                _treeView.SetManager(_settingsManager);// Initialize loader if needed
-                SetupTools(_settingsManager);
+                SetupManager(evt.newValue as SettingsManager);
                 Refresh();
             });
 
@@ -148,8 +151,30 @@ namespace Scriptable.Settings.Editor
             {
                 SelectManagerFromProjectSelection();
             }
+            else
+            {
+                _managerField.SetValueWithoutNotify(_settingsManager);
+                SetupManager(_settingsManager);
+            }
 
             Refresh();
+        }
+
+        private void AddExistingAssets(VisualElement source, SettingNode parent, ScriptableObject[] assets)
+        {
+            foreach (var asset in assets)
+            {
+                CreateNode(parent, asset);
+            }
+            Refresh();
+        }
+
+        private void SetupManager(SettingsManager manager)
+        {
+            CleanTools(_settingsManager);
+            _settingsManager = manager;
+            _treeView.SetManager(_settingsManager);// Initialize loader if needed
+            SetupTools(_settingsManager);
         }
 
         private void Refresh()
@@ -274,8 +299,10 @@ namespace Scriptable.Settings.Editor
             if (_settingsManager == null) return;
 
             var nodeParent = _treeView.Selected;
-            CreateSettingNodeWindow.ShowWindow((type, newNodeName) => { CreateNode(nodeParent, newNodeName, type); }, nodeParent, _addButton);
-
+            CreateSettingNodeWindow.ShowWindow( nodeParent, _addButton,
+                (type, newNodeName) => { CreateNode(nodeParent, newNodeName, type); },
+                (existing) => { CreateNode(nodeParent, existing); });
+                
         }
 
         private void MoveNode(VisualElement arg1, SettingNode moveNode, SettingNode targetNode)
@@ -293,6 +320,16 @@ namespace Scriptable.Settings.Editor
         private void CreateNode(SettingNode nodeParent, string newNodeName, Type type)
         {
             SettingNode newNode = _settingsManager.CreateNode(nodeParent, newNodeName, type); // Pass selected node as parent
+            if (newNode != null)
+            {
+                _treeView.PopulateTreeView();
+                _treeView.SelectNode(newNode);
+            }
+        }
+        
+        private void CreateNode(SettingNode nodeParent, ScriptableObject existingAsset)
+        {
+            SettingNode newNode = _settingsManager.CreateNode(nodeParent, existingAsset.name, existingAsset, SettingsManager.ExistingAssetOperation.Move); // Pass selected node as parent
             if (newNode != null)
             {
                 _treeView.PopulateTreeView();

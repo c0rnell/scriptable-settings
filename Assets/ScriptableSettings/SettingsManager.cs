@@ -93,6 +93,11 @@ namespace Scriptable.Settings
             return node;
         }
 
+        public SettingNode GetNodeById<T>(ScriptableSettingId<T> settingId) where T : ScriptableObject
+        {
+            return GetNodeById(settingId.Id);
+        }
+
         // Typed enumeration - Constraint changed to ScriptableObject
         public IEnumerable<SettingNode> GetNodesOfType<T>() where T : ScriptableObject // Constraint Changed
         {
@@ -143,20 +148,38 @@ namespace Scriptable.Settings
         public void OnBeforeSerialize()
         {
             if (indexChanged == false) return;
-            // Flatten your runtime graph back into DTOs
-            serializedNodes.Clear();
-            if (nodeIndex == null) return;
+            
+            if (nodeIndex == null)
+            {
+                serializedNodes.Clear();
+                return;
+            }
 
+            var serialisedNodesData = new List<SettingNodeData>();
             foreach (var node in nodeIndex.Values)
             {
-                serializedNodes.Add(new SettingNodeData
+                if (node.IsValid)
                 {
-                    i = ShortGuid.Encode(node.Guid),
-                    n = node.Name,
-                    t = node.SettingType.AssemblyQualifiedName,
-                    ch = node.Children.Select(c => ShortGuid.Encode(c.Guid)).ToList()
-                });
+                    serialisedNodesData.Add(new SettingNodeData
+                    {
+                        i = ShortGuid.Encode(node.Guid),
+                        n = node.Name,
+                        t = node.SettingType.AssemblyQualifiedName,
+                        ch = node.Children.Select(c => ShortGuid.Encode(c.Guid)).ToList()
+                    });
+                }
+                else
+                {
+                    if (node.TryGetSetting(out _))
+                    {
+                        var previousSerialization = serializedNodes.FirstOrDefault(x => x.i == ShortGuid.Encode(node.Guid));
+                        if (previousSerialization != null)
+                            serialisedNodesData.Add(previousSerialization);
+                    }
+                }
             }
+            
+            serializedNodes = serialisedNodesData;
 
             indexChanged = false;
         }
@@ -182,7 +205,6 @@ namespace Scriptable.Settings
                     parentNode.AddChild(childNode);
                 }
             }
-
             roots = nodeIndex.Values.Where(x => x.Parent == null).ToList();
         }
 
@@ -190,21 +212,26 @@ namespace Scriptable.Settings
         {
             if (!string.IsNullOrEmpty(data.t))
             {
-                var type = Type.GetType(data.t);
-                if (type == null)
+                try
                 {
-                    // Log clearly that the type couldn't be found AT LOAD TIME
-                    Debug.LogError(
-                        $"SettingNode '{name}' (GUID: {ShortGuid.Decode(data.i)}): Could not find Type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
-                }
+                    var type = Type.GetType(data.t);
+                    if (type == null)
+                    {
+                        Debug.LogError($"SettingNode '{data.n}' (GUID: {ShortGuid.Decode(data.i)}): Could not find Type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+                    }
 
-                return type;
-                // ... (check if ScriptableObject) ...
+                    return type;
+                }
+                catch (Exception)
+                {
+                    Debug.LogError($"SettingNode '{data.n}' (GUID: {ShortGuid.Decode(data.i)}): Failed to load type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+                    return null;
+                }
             }
             else
             {
                 Debug.LogWarning(
-                    $"SettingNode '{name}' (GUID: {ShortGuid.Decode(data.i)}) has missing or empty typeName during deserialization.");
+                    $"SettingNode '{data.n}' (GUID: {ShortGuid.Decode(data.i)}) has missing or empty typeName during deserialization.");
             }
 
             return null;

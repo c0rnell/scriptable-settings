@@ -1,12 +1,24 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <ui:VisualElement name="root" style="flex-grow: 1;">
-        <ui:Label text="Enter Node Details" name="Caption" class="caption" style="-unity-font-style: bold; -unity-text-align: upper-center; font-size: 18px; margin-bottom: 14px; margin-top: 10px;" />
-        <ui:TextField label="Parent" readonly="true" select-all-on-mouse-up="false" select-all-on-focus="false" select-word-by-double-click="false" select-line-by-triple-click="false" emoji-fallback-support="false" name="Parent" />
-        <ui:TextField label="Name" placeholder-text="new setting name" name="Name" />
-        <TypeSelectorDropdown type="UnityEngine.ScriptableObject, UnityEngine.CoreModule" label="Type" style="flex-grow: 0;" />
-        <ui:VisualElement name="Butons" style="flex-grow: 0; flex-direction: row; align-items: stretch; justify-content: center; margin-top: 20px;">
-            <ui:Button text="Create" name="Create" style="padding-right: 10px; font-size: 15px; margin-right: 10px;" />
-            <ui:Button text="Cancel" name="Cancel" style="background-color: rgb(161, 36, 36); font-size: 15px; padding-left: 10px; margin-left: 10px;" />
+    <ui:VisualElement name="root" style="flex-grow: 1; padding-left: 10px; padding-right: 10px;">
+        <ui:Label text="Node Options" name="Caption" class="caption" style="-unity-font-style: bold; -unity-text-align: upper-center; font-size: 18px; margin-bottom: 14px; margin-top: 10px;" />
+        <ui:TextField label="Parent" readonly="true" name="Parent" style="margin-bottom: 10px;" />
+        <ui:VisualElement name="TabContainer" style="flex-direction: row; justify-content: flex-start; margin-bottom: 10px; height: 25px;">
+            <ui:Button text="Create New" name="CreateNewTabButton" style="flex-grow: 1; margin-right: 2px; background-color: rgb(80, 80, 80); border-color: rgb(100, 100, 100);" />
+            <ui:Button text="Add Existing" name="AddExistingTabButton" style="flex-grow: 1; margin-left: 2px; background-color: rgb(60, 60, 60); border-color: rgb(100, 100, 100);" />
+        </ui:VisualElement>
+        <ui:VisualElement name="CreateNewTabContent">
+            <ui:Label text="Create New Asset" style="-unity-font-style: bold; font-size: 16px; margin-bottom: 8px;" />
+            <ui:TextField label="Name" placeholder-text="new setting name" name="Name" />
+            <TypeSelectorDropdown type="UnityEngine.ScriptableObject, UnityEngine.CoreModule" label="Type" name="TypeSelector" style="flex-grow: 0;" />
+            <ui:Button text="Create Asset" name="CreateAssetButton" style="padding-right: 10px; font-size: 15px; margin-top: 15px; height: 30px;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="AddExistingTabContent" style="display: none;">
+            <ui:Label text="Add Existing Asset" style="-unity-font-style: bold; font-size: 16px; margin-bottom: 8px;" />
+            <uie:ObjectField label="Asset" name="ExistingAssetField" type="UnityEngine.ScriptableObject, UnityEngine.CoreModule" style="margin-top: 5px;" />
+            <ui:Button text="Add Selected Asset" name="AddExistingAssetButton" style="font-size: 15px; margin-top: 15px; height: 30px;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="CommonActions" style="flex-grow: 0; flex-direction: row; justify-content: flex-end; margin-top: 20px;">
+            <ui:Button text="Cancel" name="CancelButton" style="background-color: rgb(161, 36, 36); font-size: 15px; height: 30px;" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

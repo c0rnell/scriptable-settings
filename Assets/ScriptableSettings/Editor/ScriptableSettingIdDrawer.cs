@@ -14,10 +14,10 @@ namespace Scriptable.Settings.Editor
         {
             var idProperty = property.FindPropertyRelative("i");
 
-            Type targetType = GetGenericArgumentType(fieldInfo.FieldType);
+            Type targetType = GetGenericArgumentType(property.boxedValue?.GetType());
             
 
-            var dropDown = new SettingNodeDropdown(property.name, GetAllSettingNodesOfType, 
+            var dropDown = new SettingNodeDropdown(preferredLabel, GetAllSettingNodesOfType, 
                 (selected) => targetType.IsAssignableFrom(selected.SettingType));
             dropDown.RegisterCallback<ChangeEvent<SettingNode>>(OnSettingSelected);
             

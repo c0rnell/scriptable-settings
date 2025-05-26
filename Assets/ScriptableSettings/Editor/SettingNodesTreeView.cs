@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Search;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -15,6 +14,7 @@ namespace Scriptable.Settings.Editor
         public event Action<VisualElement, SettingNode> RemoveNodeClicked;*/
         public event Action<VisualElement, SettingNode, string> NodeRenamed;
         public event Action<VisualElement, SettingNode, SettingNode> NodeMoved;
+        public event Action<VisualElement, SettingNode, ScriptableObject[]> AssetsAdded;
         public event Action<SettingNode> selectionChanged;
 
         public SettingNode Selected => _selectedNode;
@@ -161,11 +161,28 @@ namespace Scriptable.Settings.Editor
                 
             ve.RegisterCallback<DragPerformEvent, VisualElement>((evt, elm)  =>
             {
-                if (DragAndDrop.GetGenericData("UserData") is SettingNode draggedNode
-                    && elm.userData is SettingNode targetNode)
+                if (elm.userData is SettingNode targetNode)
                 {
-                    NodeMoved?.Invoke(elm, draggedNode, targetNode);
+                    if (DragAndDrop.GetGenericData("UserData") is SettingNode draggedNode)
+                    {
+                        NodeMoved?.Invoke(elm, draggedNode, targetNode);
+                    }
+
+                    if (DragAndDrop.paths.Any())
+                    {
+                        var processableAssets = new List<ScriptableObject>();
+                        foreach (var path in DragAndDrop.paths)
+                        {
+                            var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                            if (asset != null)
+                                processableAssets.Add(asset);
+                        }
+
+                        if (processableAssets.Count > 0)
+                            AssetsAdded?.Invoke(elm, targetNode, processableAssets.ToArray());
+                    }
                 }
+                
                 elm.RemoveFromClassList("drag-hover");
                 DragAndDrop.AcceptDrag();
                 evt.StopPropagation();
