@@ -28,18 +28,6 @@ namespace Scriptable.Settings.Editor
         private SettingNode _selectedNode;
         public SettingNodesTreeView(VisualTreeAsset settingItem) : base()
         {
-            /*_searchField = new ToolbarSearchField { name = "search-field", style = { marginBottom = 4, width = Length.Auto() }};
-            _searchField.RegisterValueChangedCallback(evt =>
-            {
-                PopulateTreeView();
-                
-            });
-            Add(_searchField);
-            
-            var addRootButton = new Button() { text = "+" };
-            addRootButton.clicked += () => AddChildNodeClicked?.Invoke(addRootButton, null);
-            Add(addRootButton);*/
-            
             _treeView = new TreeView();
             _treeView.focusable = true;
             Add(_treeView);
@@ -51,7 +39,10 @@ namespace Scriptable.Settings.Editor
                 ve.focusable = true;
                 ve.RegisterCallback<KeyDownEvent, VisualElement>(OnKeyDown, ve);
                 
-                SetupDragAndDrop(ve);
+                ve.AddManipulator(new TreeViewDragManipulator(ve, this.parent
+                    , (from, node, targetNode) => NodeMoved?.Invoke(this, node, targetNode),
+                    (from, assets, target) => AssetsAdded?.Invoke(from, target, assets.ToArray())
+                 ).WithHoverClass("drag-hover"));
 
                 return ve;
             }; // Create a simple Label for each tree item
@@ -63,13 +54,6 @@ namespace Scriptable.Settings.Editor
                 var addButton = element.Q<Button>("Add");
                 var node = _treeView.GetItemDataForIndex<SettingNode>(index);
                 element.userData = node;
-                
-                /*addButton.userData = node;
-                addButton.RegisterCallback<ClickEvent>(OnSelectedAdd);
-
-                var removeButton = element.Q<Button>("Remove");
-                removeButton.userData = node;
-                removeButton.RegisterCallback<ClickEvent>(OnSelectedRemove);*/
                 
                 if (node != null)
                 {
@@ -84,16 +68,11 @@ namespace Scriptable.Settings.Editor
 
             _treeView.unbindItem = (element, index) =>
             {
-                /*var addButton = element.Q<Button>("Add");
-                var removeButton = element.Q<Button>("Remove");
-                
-                addButton.UnregisterCallback<ClickEvent>(OnSelectedAdd);
-                removeButton.UnregisterCallback<ClickEvent>(OnSelectedRemove);*/
             };
             
             _treeView.selectionChanged += OnSelectionChange;
             
-            RegisterCallback<DragPerformEvent, VisualElement>((evt, elm) =>
+            /*RegisterCallback<DragPerformEvent, VisualElement>((evt, elm) =>
                 {
                     if (DragAndDrop.GetGenericData("UserData") is SettingNode draggedNode)
                     {
@@ -111,30 +90,31 @@ namespace Scriptable.Settings.Editor
                     DragAndDrop.visualMode = DragAndDropVisualMode.Move;
                     evt.StopPropagation();
                 }
-            }, this);
+            }, this);*/
             
             //_treeView.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
         }
 
-        private void SetupDragAndDrop(VisualElement ve)
+        /*private void SetupDragAndDrop(VisualElement ve)
         {
             ve.RegisterCallback<MouseDownEvent, VisualElement>((evt, elm)  =>
             {
                 if (evt.button == (int)MouseButton.LeftMouse && evt.clickCount == 1)
                 {
                     DragAndDrop.PrepareStartDrag();
-                    DragAndDrop.objectReferences = new UnityEngine.Object[] { };
                     DragAndDrop.SetGenericData("UserData", elm.userData);
-                    DragAndDrop.StartDrag("Dragging Node");
+                    
                 }
             }, ve);
             ve.RegisterCallback<MouseUpEvent, VisualElement>((evt, elm)  =>
             {
+                DragAndDrop.PrepareStartDrag();
                 elm.RemoveFromClassList("drag-hover");
             }, ve);
                 
             ve.RegisterCallback<DragEnterEvent, VisualElement>((evt, elm)  =>
             {
+                DragAndDrop.StartDrag("Dragging Node");
                 if(elm.userData != DragAndDrop.GetGenericData("UserData"))
                     elm.AddToClassList("drag-hover");
                 DragAndDrop.visualMode = DragAndDropVisualMode.Move;
@@ -187,7 +167,7 @@ namespace Scriptable.Settings.Editor
                 DragAndDrop.AcceptDrag();
                 evt.StopPropagation();
             },ve);
-        }
+        }*/
 
         private void OnSelectionChange(IEnumerable<object> obj)
         {
