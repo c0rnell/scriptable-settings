@@ -242,10 +242,10 @@ namespace Scriptable.Settings.Editor
             // Important: Rebuild the visual tree
         }
 
-        public void SelectNode(SettingNode node)
+        public void SelectNode(SettingNode node, bool silent = false)
         {
             _selectedNode = node;
-            _treeView.ExpandAndSelect(_treeRootData, _selectedNode, true);
+            _treeView.ExpandAndSelect(_treeRootData, _selectedNode, silent == false);
         }
 
         public void Deselect(VisualElement visualElement)

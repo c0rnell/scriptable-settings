@@ -32,6 +32,8 @@ namespace Scriptable.Settings.Editor
         private VisualElement _leftPane;
         
         private SettingNode _clipboardNode;
+        private ISettingNodeHistory _nodeHistory;
+        private HistoryBar _historyBar;
 
         [MenuItem("Window/Settings Manager Editor")]
         public static void ShowWindow()
@@ -117,9 +119,15 @@ namespace Scriptable.Settings.Editor
             
             _managerField = root.Q<ObjectField>("manager-field");
             _managerField.objectType = typeof(SettingsManager);
+
+            var historyContainer = root.Q<VisualElement>("history");
+            _historyBar = new HistoryBar();
+            _historyBar.OnHistorySelection += SelectHistoryNode;
+            historyContainer.Add(_historyBar);
+            
             // Setup Object Field for Manager Asset
             // Setup Button Callbacks
-            _treeView.selectionChanged += SelectNode;
+            _treeView.selectionChanged += TreeSelectionChanged;
             _treeView.NodeRenamed += RenameNode;
             _treeView.NodeMoved += MoveNode;
             _treeView.AssetsAdded += AddExistingAssets;
@@ -175,6 +183,17 @@ namespace Scriptable.Settings.Editor
             _settingsManager = manager;
             _treeView.SetManager(_settingsManager);// Initialize loader if needed
             SetupTools(_settingsManager);
+            
+            // Initialize history
+            if (_settingsManager != null)
+            {
+                _nodeHistory = new SettingNodeHistory(_settingsManager);
+                _historyBar.SetHistory(_nodeHistory);
+            }
+            else
+            {
+                _nodeHistory = null;
+            }
         }
 
         private void Refresh()
@@ -223,6 +242,18 @@ namespace Scriptable.Settings.Editor
             if(evt.altKey && evt.keyCode == KeyCode.Return)
             {
                 CreateNode(null);
+                evt.StopPropagation();
+            }
+            
+            // History navigation (Alt+Left/Right)
+            if (evt.altKey && evt.keyCode == KeyCode.LeftBracket)
+            {
+                NavigateHistoryBack();
+                evt.StopPropagation();
+            }
+            else if (evt.altKey && evt.keyCode == KeyCode.RightBracket)
+            {
+                NavigateHistoryForward();
                 evt.StopPropagation();
             }
             
@@ -376,12 +407,28 @@ namespace Scriptable.Settings.Editor
             }
         }
 
-        private void SelectNode(SettingNode selected)
+        private void TreeSelectionChanged(SettingNode selected)
+        {
+            SelectNode(selected, _nodeHistory);
+        }
+
+        private void SelectNode(SettingNode selected, ISettingNodeHistory history = null)
         {
             if (selected != null)
+            {
                 _inspectorPanel.ShowNodeInInspector(_settingsManager, selected);
+                
+                // Add to history
+                if (history != null)
+                {
+                    history.AddNode(selected);
+                    _historyBar.RefreshBreadcrumbs();
+                }
+            }
             else
+            {
                 _inspectorPanel.ClearInspector();
+            }
 
             SaveSelection(selected);
         }
@@ -392,6 +439,34 @@ namespace Scriptable.Settings.Editor
                 return;
             EditorPrefs.SetString("SelectedNode", selected?.Guid.ToString() ?? string.Empty);
         }
-        // --- Helper (Refactor from SettingsManagerEditor) ---
+        
+        private void NavigateHistoryBack()
+        {
+            if (_nodeHistory == null || !_nodeHistory.CanGoBack) return;
+            
+            _nodeHistory.NavigateBack();
+            SelectHistoryNode();
+            _historyBar.UpdateCurrentSelection();
+        }
+        
+        private void NavigateHistoryForward()
+        {
+            if (_nodeHistory == null || !_nodeHistory.CanGoForward) return;
+            
+            _nodeHistory.NavigateForward();
+            SelectHistoryNode();
+            _historyBar.UpdateCurrentSelection();
+        }
+
+        private void SelectHistoryNode()
+        {
+            var node = _nodeHistory.CurrentNode;
+            if (node != null)
+            {
+                _treeView.SelectNode(node, true);
+                SelectNode(node);
+                _historyBar.UpdateCurrentSelection();
+            }
+        }
     }
 }

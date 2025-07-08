@@ -42,6 +42,9 @@ namespace Scriptable.Settings.Editor
             
                 if(select)
                     tree.SetSelectionById(new List<int> { treeItem.Value.id });
+                else
+                    tree.SetSelectionByIdWithoutNotify(new List<int> { treeItem.Value.id });
+                
                 tree.ScrollToItemById(treeItem.Value.id);
             }
         }
