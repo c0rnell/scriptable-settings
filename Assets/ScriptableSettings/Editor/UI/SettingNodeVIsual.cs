@@ -1,3 +1,5 @@
+using System.Linq;
+using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -23,9 +25,25 @@ namespace Scriptable.Settings.Editor
             _scrollView.Clear();
             
              if (node == null) { ClearInspector(); return; }
+
+             var title = new VisualElement() { style = { flexDirection = FlexDirection.Row, marginBottom = 5 , flexGrow = 1} };
              
-             var refField = new UnityEditor.Search.ObjectField($"Selected Node:") { value = node.Asset, style = { unityFontStyleAndWeight = FontStyle.Bold } };
-             _header.Add(refField);
+             var refField = new UnityEditor.Search.ObjectField($"Node:") { value = node.Asset, style = { unityFontStyleAndWeight = FontStyle.Bold, flexGrow = 1} };
+             title.Add(refField);
+             var scriptButton = new Button(() => 
+             {
+                 if (node.Asset != null)
+                 {
+                     var assetGuids = AssetDatabase.FindAssets($"{node.Asset.GetType().Name} t:MonoScript");
+                     var assetPath = assetGuids.Select(AssetDatabase.GUIDToAssetPath)
+                         .Where(x => x.Contains($"{node.Asset.GetType().Name}.cs"));
+                     var assets = assetPath.Select(AssetDatabase.LoadAssetAtPath<Object>).ToArray();
+                     AssetDatabase.OpenAsset(assets.FirstOrDefault());
+                 }
+             }) { text = "Script" };
+             title.Add(scriptButton);
+             
+             _header.Add(title);
              var guidElement = new VisualElement() { style = { flexGrow = 1, flexDirection = FlexDirection.RowReverse } };
              _header.Add(guidElement);
              guidElement.Add(new Label($"GUID: {node.Guid}"));

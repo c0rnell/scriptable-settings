@@ -9,22 +9,22 @@ namespace Scriptable.Settings
     [CreateAssetMenu(fileName = "SettingsManager", menuName = "Settings/Settings Manager")]
     public partial class SettingsManager : ScriptableObject, ISerializationCallbackReceiver
     {
-        [SerializeField] private List<SettingNodeData> serializedNodes = new List<SettingNodeData>();
+        [SerializeField] internal List<SettingNodeData> serializedNodes = new List<SettingNodeData>();
 
         [SerializeField] private SettingLoaderFactory loaderFactory;
 
-        [NonSerialized] private List<SettingNode> roots;
+        [NonSerialized] internal List<SettingNode> roots;
 
         // Non-Serialized fields - same as before
-        [NonSerialized] private Dictionary<Guid, SettingNode> nodeIndex;
-        [NonSerialized] private ISettingLoader loader;
-        [NonSerialized] private bool indexBuilt = false;
+        [NonSerialized] internal Dictionary<Guid, SettingNode> nodeIndex;
+        [NonSerialized] internal ISettingLoader loader;
+        [NonSerialized] internal bool indexBuilt = false;
 
         // Properties and Core Methods - same as before
         public IReadOnlyList<SettingNode> SettingTree => roots;
         public ISettingLoader Loader => loader ??= loaderFactory.CreateSettingLoader();
 
-        [NonSerialized] private bool indexChanged = false;
+        [NonSerialized] internal bool indexChanged = false;
 
         private void BuildIndexAndParentsIfNeeded()
         {
@@ -186,26 +186,85 @@ namespace Scriptable.Settings
 
         public void OnAfterDeserialize()
         {
+            // Initialize roots if null
+            if (roots == null)
+                roots = new List<SettingNode>();
+            
+            // Clear existing data
+            roots.Clear();
+            
+            // Initialize nodeIndex if null
+            if (nodeIndex == null)
+                nodeIndex = new Dictionary<Guid, SettingNode>();
+            else
+                nodeIndex.Clear();
+            
+            // Handle empty serialized data
+            if (serializedNodes == null || serializedNodes.Count == 0)
+            {
+                indexBuilt = true;
+                return;
+            }
+
             // Rebuild runtime graph from the flat DTO list
             var dataWithId = serializedNodes
-                .Select(x => (id: ShortGuid.Decode(x.i), data: x)).ToList();
-
-            nodeIndex = dataWithId
-                .ToDictionary(
-                    d => d.id,
-                    d => new SettingNode(d.data.n, ConstructType(d.data), d.id, Loader)
-                );
-
-            foreach (var data in dataWithId)
-            {
-                var parentNode = nodeIndex[data.id];
-                foreach (var childId in data.data.ch)
+                .Where(x => !string.IsNullOrEmpty(x.i))
+                .Select(x => 
                 {
-                    var childNode = nodeIndex[ShortGuid.Decode(childId)];
-                    parentNode.AddChild(childNode);
+                    try 
+                    {
+                        return (id: ShortGuid.Decode(x.i), data: x, valid: true);
+                    }
+                    catch
+                    {
+                        Debug.LogError($"Invalid ShortGuid format: '{x.i}'");
+                        return (id: Guid.Empty, data: x, valid: false);
+                    }
+                })
+                .Where(x => x.valid && x.id != Guid.Empty)
+                .ToList();
+
+            // Create nodes first
+            foreach (var item in dataWithId)
+            {
+                var node = new SettingNode(item.data.n, ConstructType(item.data), item.id, Loader);
+                if (nodeIndex.TryAdd(item.id, node) == false)
+                {
+                    Debug.LogWarning($"Duplicate GUID {item.id} found during deserialization");
                 }
             }
+
+            // Then establish parent-child relationships
+            foreach (var data in dataWithId)
+            {
+                if (nodeIndex.TryGetValue(data.id, out var parentNode))
+                {
+                    foreach (var childId in data.data.ch)
+                    {
+                        if (!string.IsNullOrEmpty(childId))
+                        {
+                            try
+                            {
+                                var childGuid = ShortGuid.Decode(childId);
+                                if (nodeIndex.TryGetValue(childGuid, out var childNode))
+                                {
+                                    parentNode.AddChild(childNode);
+                                }
+                            }
+                            catch
+                            {
+                                Debug.LogError($"Invalid child ShortGuid format: '{childId}'");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Find root nodes
             roots = nodeIndex.Values.Where(x => x.Parent == null).ToList();
+            
+            // Mark index as built
+            indexBuilt = true;
         }
 
         private Type ConstructType(SettingNodeData data)
@@ -217,14 +276,14 @@ namespace Scriptable.Settings
                     var type = Type.GetType(data.t);
                     if (type == null)
                     {
-                        Debug.LogError($"SettingNode '{data.n}' (GUID: {ShortGuid.Decode(data.i)}): Could not find Type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+                        Debug.LogError($"SettingNode '{data.n}' (GUID: {data.i}): Could not find Type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
                     }
 
                     return type;
                 }
                 catch (Exception)
                 {
-                    Debug.LogError($"SettingNode '{data.n}' (GUID: {ShortGuid.Decode(data.i)}): Failed to load type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+                    Debug.LogError($"SettingNode '{data.n}' (GUID: {data.i}): Failed to load type '{data.t}'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
                     return null;
                 }
             }
