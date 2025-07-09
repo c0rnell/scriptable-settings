@@ -24,7 +24,7 @@ namespace Scriptable.Settings.Editor
         private readonly List<TreeViewItemData<SettingNode>> _treeRootData = new List<TreeViewItemData<SettingNode>>();
 
         private VisualElement _renaming;
-        private SettingsManager _settingsManager;
+        private ScriptableSettings _scriptableSettings;
         private SettingNode _selectedNode;
         public SettingNodesTreeView(VisualTreeAsset settingItem) : base()
         {
@@ -215,7 +215,7 @@ namespace Scriptable.Settings.Editor
             _treeView.Clear();
             _treeRootData.Clear();
             
-            if (_settingsManager == null)
+            if (_scriptableSettings == null)
             {
                 _treeView.RefreshItems(); // Show empty tree
                 return;
@@ -223,8 +223,8 @@ namespace Scriptable.Settings.Editor
             // Build tree view item data (IDs and mapping) recursively
             IEnumerable<SettingNode> nodesToDisplay =
                 string.IsNullOrEmpty(filter) ?
-                _settingsManager.SettingTree
-                : _settingsManager.GetAllNodes().Where(x => FuzzySearch.FuzzyMatch(filter, x.Name));
+                _scriptableSettings.SettingTree
+                : _scriptableSettings.GetAllNodes().Where(x => FuzzySearch.FuzzyMatch(filter, x.Name));
             
             // Filter nodes based on search field
             
@@ -334,9 +334,9 @@ namespace Scriptable.Settings.Editor
             _renaming = null;
         }
 
-        public void SetManager(SettingsManager settingsManager)
+        public void SetManager(ScriptableSettings scriptableSettings)
         {
-            _settingsManager = settingsManager;
+            _scriptableSettings = scriptableSettings;
         }
     }
 }

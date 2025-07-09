@@ -2,7 +2,7 @@ using System;
 using NUnit.Framework;
 using Scriptable.Settings;
 
-namespace ScriptableSettings.Tests
+namespace Scriptable.Settings.Tests
 {
     public class ShortGuidTests
     {

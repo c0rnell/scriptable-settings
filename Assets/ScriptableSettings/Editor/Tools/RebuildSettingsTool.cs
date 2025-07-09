@@ -90,8 +90,8 @@ namespace Scriptable.Settings.Editor.Tools
 
         private void OnCreateClicked(ClickEvent evt)
         {
-            _settingsWindow.SettingsManager.Nuke();
-            _settingsWindow.SettingsManager.BuildNodesFromPath(_folderPath, null);
+            _settingsWindow.scriptableSettings.Nuke();
+            _settingsWindow.scriptableSettings.BuildNodesFromPath(_folderPath, null);
         }
     }
 }

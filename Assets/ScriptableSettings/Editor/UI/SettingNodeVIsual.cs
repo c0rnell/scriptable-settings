@@ -19,7 +19,7 @@ namespace Scriptable.Settings.Editor
             Add(_scrollView);
         }
 
-        public void ShowNodeInInspector(SettingsManager manager, SettingNode node)
+        public void ShowNodeInInspector(ScriptableSettings manager, SettingNode node)
         {
             _header.Clear();
             _scrollView.Clear();

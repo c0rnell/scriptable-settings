@@ -5,7 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Scriptable.Settings;
 
-namespace ScriptableSettings.Tests
+namespace Scriptable.Settings.Tests
 {
     /// <summary>
     /// Base class for all ScriptableSettings tests providing common test utilities and simplified setup using internal accessors.
@@ -92,7 +92,7 @@ namespace ScriptableSettings.Tests
             foreach (var obj in allObjects)
             {
                 if (obj != null && obj.hideFlags == HideFlags.HideAndDontSave && 
-                    (obj is SettingsManager || obj is SettingLoaderFactory || 
+                    (obj is ScriptableSettings || obj is SettingLoaderFactory || 
                      obj is TestSettings || obj is TestAudioSettings || 
                      obj is TestGameSettings || obj is TestGraphicsSettings))
                 {
@@ -102,11 +102,11 @@ namespace ScriptableSettings.Tests
         }
         
         /// <summary>
-        /// Creates a SettingsManager for testing using simplified internal accessors.
+        /// Creates a ScriptlableSettings for testing using simplified internal accessors.
         /// </summary>
-        protected SettingsManager CreateTestManager()
+        protected ScriptableSettings CreateTestManager()
         {
-            var manager = ScriptableObject.CreateInstance<SettingsManager>();
+            var manager = ScriptableObject.CreateInstance<ScriptableSettings>();
             manager.hideFlags = HideFlags.HideAndDontSave;
             
             // Create and set the loader factory using the editor property
@@ -118,7 +118,7 @@ namespace ScriptableSettings.Tests
             manager.LoaderFactory = loaderFactory;
 #else
             // Fallback for non-editor builds
-            var loaderFactoryField = typeof(SettingsManager).GetField("loaderFactory", 
+            var loaderFactoryField = typeof(ScriptableSettings).GetField("loaderFactory", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             loaderFactoryField?.SetValue(manager, loaderFactory);
 #endif
@@ -164,7 +164,7 @@ namespace ScriptableSettings.Tests
         /// <summary>
         /// Helper to add a node directly to the manager using internal accessors.
         /// </summary>
-        protected void AddRootNodeToManager(SettingsManager manager, SettingNode node)
+        protected void AddRootNodeToManager(ScriptableSettings manager, SettingNode node)
         {
             // Initialize collections if needed
             if (manager.nodeIndex == null)

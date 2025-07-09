@@ -6,7 +6,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Scriptable.Settings;
 
-namespace ScriptableSettings.Tests
+namespace Scriptable.Settings.Tests
 {
     /// <summary>
     /// Comprehensive tests for path construction and asset loading in the ScriptableSettings system.
@@ -16,7 +16,7 @@ namespace ScriptableSettings.Tests
     public class PathConstructionAndLoadingTests : ScriptableSettingsTestBase
     {
         private ResourcesSettingLoader resourcesLoader;
-        private SettingsManager testManager;
+        private ScriptableSettings testManager;
         
         [SetUp]
         public override void Setup()

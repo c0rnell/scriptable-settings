@@ -12,7 +12,7 @@ namespace Scriptable.Settings.Editor
 {
     public class SettingsManagerWindow : EditorWindow
     {
-        public SettingsManager SettingsManager => _settingsManager;
+        public ScriptableSettings scriptableSettings => _scriptableSettings;
         
         [SerializeField] private VisualTreeAsset visualTree; // Assign UXML file in Inspector
         [SerializeField] private StyleSheet styleSheet;
@@ -20,7 +20,7 @@ namespace Scriptable.Settings.Editor
         [SerializeField] private VisualTreeAsset settingItem; // Assign USS file (Optional)
 
         //[SerializeField][HideInInspector] 
-        private SettingsManager _settingsManager;
+        private ScriptableSettings _scriptableSettings;
         
         private SettingNodesTreeView _treeView;
         private SettingNodeVisual _inspectorPanel; 
@@ -56,15 +56,18 @@ namespace Scriptable.Settings.Editor
 
         private void OnDestroy()
         {
-            CleanTools(_settingsManager);
+            CleanTools(_scriptableSettings);
         }
 
-        private void CleanTools(SettingsManager settingsManager)
+        private void CleanTools(ScriptableSettings scriptableSettings)
         {
-            if (!settingsManager && settingsManager.Tools == null)
+            if (!scriptableSettings)
+                return;
+            
+            if (scriptableSettings && scriptableSettings.Tools == null)
                 return;
 
-            foreach (var tool in settingsManager.Tools)
+            foreach (var tool in scriptableSettings.Tools)
             {
                 if(tool is ISettingEditorTool settingTool)
                 {
@@ -73,12 +76,12 @@ namespace Scriptable.Settings.Editor
             }
         }
         
-        private void SetupTools(SettingsManager settingsManager)
+        private void SetupTools(ScriptableSettings scriptableSettings)
         {
-            if (settingsManager == null)
+            if (scriptableSettings == null)
                 return;
 
-            foreach (var tool in settingsManager.Tools)
+            foreach (var tool in scriptableSettings.Tools)
             {
                 if(tool is ISettingEditorTool settingTool)
                 {
@@ -118,7 +121,7 @@ namespace Scriptable.Settings.Editor
             rightPane.Add(_inspectorPanel);
             
             _managerField = root.Q<ObjectField>("manager-field");
-            _managerField.objectType = typeof(SettingsManager);
+            _managerField.objectType = typeof(ScriptableSettings);
 
             var historyContainer = root.Q<VisualElement>("history");
             _historyBar = new HistoryBar();
@@ -151,18 +154,18 @@ namespace Scriptable.Settings.Editor
 
             _managerField.RegisterValueChangedCallback(evt =>
             {
-                SetupManager(evt.newValue as SettingsManager);
+                SetupManager(evt.newValue as ScriptableSettings);
                 Refresh();
             });
 
-            if (_settingsManager == null)
+            if (_scriptableSettings == null)
             {
                 SelectManagerFromProjectSelection();
             }
             else
             {
-                _managerField.SetValueWithoutNotify(_settingsManager);
-                SetupManager(_settingsManager);
+                _managerField.SetValueWithoutNotify(_scriptableSettings);
+                SetupManager(_scriptableSettings);
             }
 
             Refresh();
@@ -177,17 +180,17 @@ namespace Scriptable.Settings.Editor
             Refresh();
         }
 
-        private void SetupManager(SettingsManager manager)
+        private void SetupManager(ScriptableSettings manager)
         {
-            CleanTools(_settingsManager);
-            _settingsManager = manager;
-            _treeView.SetManager(_settingsManager);// Initialize loader if needed
-            SetupTools(_settingsManager);
+            CleanTools(_scriptableSettings);
+            _scriptableSettings = manager;
+            _treeView.SetManager(_scriptableSettings);// Initialize loader if needed
+            SetupTools(_scriptableSettings);
             
             // Initialize history
-            if (_settingsManager != null)
+            if (_scriptableSettings != null)
             {
-                _nodeHistory = new SettingNodeHistory(_settingsManager);
+                _nodeHistory = new SettingNodeHistory(_scriptableSettings);
                 _historyBar.SetHistory(_nodeHistory);
             }
             else
@@ -208,10 +211,10 @@ namespace Scriptable.Settings.Editor
         {
             var savedSelection = EditorPrefs.GetString("SelectedNode", null);
             if(string.IsNullOrEmpty(savedSelection) == false
-               && _settingsManager != null
+               && _scriptableSettings != null
                && Guid.TryParse(savedSelection, out var guid))
             {
-                _treeView.SelectNode(_settingsManager.GetNodeById(guid));
+                _treeView.SelectNode(_scriptableSettings.GetNodeById(guid));
             }
         }
 
@@ -270,7 +273,7 @@ namespace Scriptable.Settings.Editor
             // Paste (Ctrl+V)
             else if (evt.ctrlKey && evt.keyCode == KeyCode.V)
             {
-                if (_clipboardNode != null && _settingsManager != null)
+                if (_clipboardNode != null && _scriptableSettings != null)
                 {
                     var nodeToCopy = _clipboardNode;
                     if (nodeToCopy != null && _treeView.Selected != null)
@@ -278,7 +281,7 @@ namespace Scriptable.Settings.Editor
                         // Determine paste target: selected node or root if none selected
                         var pasteTargetParent = _treeView.Selected ?? null; // Paste under selected, or at root level
 
-                        var result = _settingsManager.PasteNode(nodeToCopy, pasteTargetParent);
+                        var result = _scriptableSettings.PasteNode(nodeToCopy, pasteTargetParent);
                         _treeView.PopulateTreeView(); 
                         _treeView.SelectNode(pasteTargetParent);// Refresh the view
                         // Optionally select the newly pasted node (requires PasteNode to return it)
@@ -294,9 +297,9 @@ namespace Scriptable.Settings.Editor
             // Duplicate (Ctrl+D)
             else if (evt.ctrlKey && evt.keyCode == KeyCode.D)
             {
-                if (_treeView.Selected != null && _settingsManager != null)
+                if (_treeView.Selected != null && _scriptableSettings != null)
                 {
-                    var newNode = _settingsManager.DuplicateNode(_treeView.Selected);
+                    var newNode = _scriptableSettings.DuplicateNode(_treeView.Selected);
                     _treeView.PopulateTreeView(); 
                     _treeView.SelectNode(newNode);
                     Debug.Log($"Duplicated Node: {_treeView.Selected.Name}"); // Optional feedback
@@ -308,7 +311,7 @@ namespace Scriptable.Settings.Editor
         private void RemoveNode(ClickEvent evt)
         {
             var nodeToRemove = _treeView.Selected;
-            if (_settingsManager == null || nodeToRemove == null) return;
+            if (_scriptableSettings == null || nodeToRemove == null) return;
 
             DeleteNodeWindow.ShowModal((deleteAsset) =>
             {
@@ -318,7 +321,7 @@ namespace Scriptable.Settings.Editor
                 }
 
                 var parent = nodeToRemove.Parent;
-                _settingsManager.DeleteNode(nodeToRemove, deleteAsset);
+                _scriptableSettings.DeleteNode(nodeToRemove, deleteAsset);
                 _treeView.PopulateTreeView();
                 _treeView.SelectNode(parent);
                 // Refresh tree
@@ -327,7 +330,7 @@ namespace Scriptable.Settings.Editor
 
         private void CreateNode(ClickEvent evt)
         {
-            if (_settingsManager == null) return;
+            if (_scriptableSettings == null) return;
 
             var nodeParent = _treeView.Selected;
             CreateSettingNodeWindow.ShowWindow( nodeParent, _addButton,
@@ -338,19 +341,19 @@ namespace Scriptable.Settings.Editor
 
         private void MoveNode(VisualElement arg1, SettingNode moveNode, SettingNode targetNode)
         {
-            _settingsManager.MoveNode(moveNode, targetNode);
+            _scriptableSettings.MoveNode(moveNode, targetNode);
             _treeView.PopulateTreeView();
             _treeView.SelectNode(targetNode);
         }
 
         private void RenameNode(VisualElement source, SettingNode node, string newName)
         {
-            _settingsManager.RenameNode(node, newName);
+            _scriptableSettings.RenameNode(node, newName);
         }
         
         private void CreateNode(SettingNode nodeParent, string newNodeName, Type type)
         {
-            SettingNode newNode = _settingsManager.CreateNode(nodeParent, newNodeName, type); // Pass selected node as parent
+            SettingNode newNode = _scriptableSettings.CreateNode(nodeParent, newNodeName, type); // Pass selected node as parent
             if (newNode != null)
             {
                 _treeView.PopulateTreeView();
@@ -360,7 +363,7 @@ namespace Scriptable.Settings.Editor
         
         private void CreateNode(SettingNode nodeParent, ScriptableObject existingAsset)
         {
-            SettingNode newNode = _settingsManager.CreateNode(nodeParent, existingAsset.name, existingAsset, SettingsManager.ExistingAssetOperation.Move); // Pass selected node as parent
+            SettingNode newNode = _scriptableSettings.CreateNode(nodeParent, existingAsset.name, existingAsset, ScriptableSettings.ExistingAssetOperation.Move); // Pass selected node as parent
             if (newNode != null)
             {
                 _treeView.PopulateTreeView();
@@ -372,38 +375,38 @@ namespace Scriptable.Settings.Editor
 
         private void SelectManagerFromProjectSelection()
         {
-            if (Selection.activeObject is SettingsManager manager)
+            if (Selection.activeObject is ScriptableSettings manager)
             {
                 _managerField.value = manager;
             }
             
-            _settingsManager = AssetDatabase.FindAssets("t:SettingsManager")
+            _scriptableSettings = AssetDatabase.FindAssets("t:ScriptableSettings")
                 .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
-                .Select(path => AssetDatabase.LoadAssetAtPath<SettingsManager>(path))
+                .Select(path => AssetDatabase.LoadAssetAtPath<ScriptableSettings>(path))
                 .FirstOrDefault(manager => manager != null);
             
-            if (_settingsManager == null)
+            if (_scriptableSettings == null)
             {
                 var newButton = new Button() { text = "New Manager" };
                 _managerField.parent.Add(newButton);
 
                 newButton.RegisterCallback<ClickEvent>(_ =>
                 {
-                    _settingsManager = ScriptableObject.CreateInstance<SettingsManager>();
-                    _settingsManager.name = "SettingsManager";
-                    _settingsManager.LoaderFactory = CreateInstance<SettingLoaderFactory>();
-                    var folderPath = _settingsManager.SettingsPath + "/Resources";
+                    _scriptableSettings = ScriptableObject.CreateInstance<ScriptableSettings>();
+                    _scriptableSettings.name = "ScriptableSettings";
+                    _scriptableSettings.LoaderFactory = CreateInstance<SettingLoaderFactory>();
+                    var folderPath = _scriptableSettings.SettingsPath + "/Resources";
                     if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
-                    AssetDatabase.CreateAsset(_settingsManager, $"{folderPath}/SettingsManager.asset");
-                    AssetDatabase.CreateAsset(_settingsManager.LoaderFactory, $"{_settingsManager.SettingsPath}/SettingsLoaderFactory.asset");
-                    _managerField.value = _settingsManager;
+                    AssetDatabase.CreateAsset(_scriptableSettings, $"{folderPath}/ScriptableSettings.asset");
+                    AssetDatabase.CreateAsset(_scriptableSettings.LoaderFactory, $"{_scriptableSettings.SettingsPath}/SettingsLoaderFactory.asset");
+                    _managerField.value = _scriptableSettings;
                     newButton.RemoveFromHierarchy(); // Remove the button
                 });
             }
             else
             {
-                _managerField.value = _settingsManager;
+                _managerField.value = _scriptableSettings;
             }
         }
 
@@ -416,7 +419,7 @@ namespace Scriptable.Settings.Editor
         {
             if (selected != null)
             {
-                _inspectorPanel.ShowNodeInInspector(_settingsManager, selected);
+                _inspectorPanel.ShowNodeInInspector(_scriptableSettings, selected);
                 
                 // Add to history
                 if (history != null)

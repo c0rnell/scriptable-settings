@@ -6,12 +6,12 @@ using Scriptable.Settings;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace ScriptableSettings.Tests
+namespace Scriptable.Settings.Tests
 {
     [TestFixture]
     public class SerializationTests : ScriptableSettingsTestBase
     {
-        private SettingsManager manager;
+        private ScriptableSettings manager;
         
         public override void Setup()
         {
@@ -160,7 +160,7 @@ namespace ScriptableSettings.Tests
             newManager.SetSerializedNodesForTesting(new List<SettingNodeData> { nodeData });
             
             // Expect the error log
-            LogAssert.Expect(LogType.Error, $"SettingNode 'MissingTypeNode' (GUID: {ShortGuid.Encode(nodeId)}): Could not find Type 'NonExistent.Type.That.Does.Not.Exist, NonExistentAssembly'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+            LogAssert.Expect(LogType.Error, $"SettingNode 'MissingTypeNode' (GUID: {ShortGuid.Encode(nodeId)}): Could not find Type 'NonExistent.Type.That.Does.Not.Exist, NonExistentAssembly'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the ScriptableSettings asset.");
             
             newManager.OnAfterDeserialize();
             
@@ -216,7 +216,7 @@ namespace ScriptableSettings.Tests
             newManager.SetSerializedNodesForTesting(new List<SettingNodeData> { nodeData });
             
             // Expect the error log
-            LogAssert.Expect(LogType.Error, $"SettingNode 'InvalidTypeNode' (GUID: {ShortGuid.Encode(nodeId)}): Could not find Type 'My<>Type<<>>With<>Invalid<>Characters'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the SettingsManager asset.");
+            LogAssert.Expect(LogType.Error, $"SettingNode 'InvalidTypeNode' (GUID: {ShortGuid.Encode(nodeId)}): Could not find Type 'My<>Type<<>>With<>Invalid<>Characters'. The class may have been renamed, moved, or deleted. Run 'Validate & Fix Node Types' on the ScriptableSettings asset.");
             
             newManager.OnAfterDeserialize();
             
@@ -429,19 +429,19 @@ namespace ScriptableSettings.Tests
     }
     
     // Extension methods using internal accessors for testing
-    public static class SettingsManagerTestExtensions
+    public static class ScriptableSettingsTestExtensions
     {
-        public static List<SettingNodeData> GetSerializedNodesForTesting(this SettingsManager manager)
+        public static List<SettingNodeData> GetSerializedNodesForTesting(this ScriptableSettings manager)
         {
             return manager.serializedNodes ?? new List<SettingNodeData>();
         }
         
-        public static void SetSerializedNodesForTesting(this SettingsManager manager, List<SettingNodeData> data)
+        public static void SetSerializedNodesForTesting(this ScriptableSettings manager, List<SettingNodeData> data)
         {
             manager.serializedNodes = data;
         }
         
-        public static SettingNode GetRootNode(this SettingsManager manager)
+        public static SettingNode GetRootNode(this ScriptableSettings manager)
         {
             // Create a fake root node for testing - use a valid GUID instead of Guid.Empty
             var rootNode = new SettingNode("Root", typeof(ScriptableObject), Guid.NewGuid(), manager.Loader);
@@ -459,7 +459,7 @@ namespace ScriptableSettings.Tests
             return rootNode;
         }
         
-        public static List<SettingNode> GetAllNodes(this SettingsManager manager)
+        public static List<SettingNode> GetAllNodes(this ScriptableSettings manager)
         {
 #if UNITY_EDITOR
             // Use the editor method if available

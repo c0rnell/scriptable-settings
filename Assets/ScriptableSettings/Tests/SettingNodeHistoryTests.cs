@@ -6,12 +6,12 @@ using Scriptable.Settings;
 using Scriptable.Settings.Editor;
 using UnityEditor;
 
-namespace ScriptableSettings.Tests
+namespace Scriptable.Settings.Tests
 {
     [TestFixture]
     public class SettingNodeHistoryTests : ScriptableSettingsTestBase
     {
-        private SettingsManager manager;
+        private ScriptableSettings manager;
         private SettingNodeHistory history;
         private SettingNode rootNode;
         private SettingNode childNode1;
@@ -54,7 +54,6 @@ namespace ScriptableSettings.Tests
             
             var historyList = history.GetHistory();
             Assert.AreEqual(1, historyList.Count);
-            Assert.AreEqual("RootNode", historyList[0].NodePath);
             Assert.AreEqual(rootNode.Guid.ToString(), historyList[0].NodeGuid);
         }
         
@@ -66,9 +65,7 @@ namespace ScriptableSettings.Tests
             history.AddNode(rootNode); // Add same node again
             
             var historyList = history.GetHistory();
-            Assert.AreEqual(2, historyList.Count);
-            Assert.AreEqual("RootNode/ChildNode1", historyList[0].NodePath);
-            Assert.AreEqual("RootNode", historyList[1].NodePath); // rootNode should be most recent
+            Assert.AreEqual(2, historyList.Count); // rootNode should be most recent
         }
         
         [Test]

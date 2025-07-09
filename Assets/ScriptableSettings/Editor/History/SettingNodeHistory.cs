@@ -15,7 +15,7 @@ namespace Scriptable.Settings.Editor
         
         private List<SettingNodeHistoryEntry> history;
         private int currentIndex = -1;
-        private readonly SettingsManager settingsManager;
+        private readonly ScriptableSettings _scriptableSettings;
         
         public bool CanGoBack => currentIndex > 0;
         public bool CanGoForward => currentIndex < history.Count - 1;
@@ -30,16 +30,16 @@ namespace Scriptable.Settings.Editor
                     var entry = history[currentIndex];
                     if (Guid.TryParse(entry.NodeGuid, out var guid))
                     {
-                        return settingsManager.GetNodeById(guid);
+                        return _scriptableSettings.GetNodeById(guid);
                     }
                 }
                 return null;
             }
         }
         
-        public SettingNodeHistory(SettingsManager manager, int size = 10)
+        public SettingNodeHistory(ScriptableSettings manager, int size = 10)
         {
-            settingsManager = manager;
+            _scriptableSettings = manager;
             history = new List<SettingNodeHistoryEntry>();
             historySize = Mathf.Max(size, MaxHistorySize);
             LoadHistory();
@@ -112,12 +112,12 @@ namespace Scriptable.Settings.Editor
         
         public SettingNode FindNodeByGuid(string guidString)
         {
-            if (string.IsNullOrEmpty(guidString) || settingsManager == null)
+            if (string.IsNullOrEmpty(guidString) || _scriptableSettings == null)
                 return null;
                 
             if (Guid.TryParse(guidString, out var guid))
             {
-                return settingsManager.GetNodeById(guid);
+                return _scriptableSettings.GetNodeById(guid);
             }
             
             return null;
@@ -140,7 +140,7 @@ namespace Scriptable.Settings.Editor
                         {
                             if (Guid.TryParse(h.NodeGuid, out var guid))
                             {
-                                return settingsManager.GetNodeById(guid) == null;
+                                return _scriptableSettings.GetNodeById(guid) == null;
                             }
                             return true;
                         });

@@ -7,14 +7,14 @@ using UnityEngine.UIElements;
 
 namespace Scriptable.Settings.Editor
 {
-    [CustomPropertyDrawer(typeof(ScriptableSettingId<>), true)]
+    [CustomPropertyDrawer(typeof(ISettingId<>), true)]
     public class ScriptableSettingIdDrawer : PropertyDrawer
     {
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             var idProperty = property.FindPropertyRelative("i");
 
-            Type targetType = GetGenericArgumentType(property.boxedValue?.GetType());
+            Type targetType = GetGenericArgumentType(GetTypeViaReflection(property));
             
 
             var dropDown = new SettingNodeDropdown(preferredLabel, GetAllSettingNodesOfType, 
@@ -34,7 +34,7 @@ namespace Scriptable.Settings.Editor
                         for (var index = 0; index < customAttribute.SettingCollectionType.Length; index++)
                         {
                             var type = customAttribute.SettingCollectionType[index];
-                            var collections = SettingManagerHelper.Instance.GetNodesOfType(type).ToList();
+                            var collections = ScriptableSettings.Instance.GetNodesOfType(type).ToList();
                             if(collections.Count() == 1 && customAttribute.SettingCollectionType.Length == 1)
                                 nodes.AddRange(collections.First().Children);
                             else
@@ -48,7 +48,7 @@ namespace Scriptable.Settings.Editor
                     return nodes;
                 }
                 
-                return SettingManagerHelper.Instance.GetNodesOfType(targetType);
+                return ScriptableSettings.Instance.GetNodesOfType(targetType);
             }
             
             void OnSettingSelected(ChangeEvent<SettingNode> evt)
@@ -61,7 +61,7 @@ namespace Scriptable.Settings.Editor
             if (string.IsNullOrEmpty(idProperty.stringValue) == false)
             {
                 var guid  = ShortGuid.Decode(idProperty.stringValue);
-                var settings = SettingManagerHelper.Instance.GetNodeById(guid);
+                var settings = ScriptableSettings.Instance.GetNodeById(guid);
                 if (settings == null)
                 {
                     dropDown.SetError($"Missing setting {guid.ToString()}");
@@ -79,17 +79,14 @@ namespace Scriptable.Settings.Editor
 
         public static Type GetGenericArgumentType(Type derivedType)
         {
-            Type baseType = derivedType.BaseType;
+            var ifaces = derivedType.GetInterfaces();
+            Type baseType = 
+                ifaces
+                .FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(ISettingId<>));
 
-            while (baseType != null)
-            {
-                if (baseType.IsGenericType && baseType.GetGenericTypeDefinition() == typeof(ScriptableSettingId<>))
-                {
-                    return baseType.GetGenericArguments()[0];
-                }
-                baseType = baseType.BaseType;
-            }
-
+            if (baseType != null)
+                return baseType.GetGenericArguments()[0];
+            
             throw new InvalidOperationException("Generic base type not found.");
         }
         
@@ -119,6 +116,51 @@ namespace Scriptable.Settings.Editor
 
             // Attribute not found
             return attributes;
+        }
+        
+        public static Type GetTypeViaReflection(SerializedProperty property)
+        {
+            try
+            {
+                Type parentType = property.serializedObject.targetObject.GetType();
+                string[] path = property.propertyPath.Replace(".Array.data[", "[").Split('.');
+        
+                FieldInfo field = null;
+                Type currentType = parentType;
+        
+                foreach (string segment in path)
+                {
+                    if (segment.Contains("["))
+                    {
+                        // Handle array/list elements
+                        string fieldName = segment.Substring(0, segment.IndexOf('['));
+                        field = currentType.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                
+                        if (field != null)
+                        {
+                            Type fieldType = field.FieldType;
+                            if (fieldType.IsArray)
+                                currentType = fieldType.GetElementType();
+                            else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>))
+                                currentType = fieldType.GetGenericArguments()[0];
+                            else
+                                currentType = fieldType;
+                        }
+                    }
+                    else
+                    {
+                        field = currentType.GetField(segment, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (field != null)
+                            currentType = field.FieldType;
+                    }
+                }
+        
+                return currentType;
+            }
+            catch
+            {
+                return null; // Fail gracefully
+            }
         }
     }
     

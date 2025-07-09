@@ -4,7 +4,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Scriptable.Settings;
 
-namespace ScriptableSettings.Tests
+namespace Scriptable.Settings.Tests
 {
     /// <summary>
     /// Comprehensive tests for cache management functionality in the ScriptableSettings system.
