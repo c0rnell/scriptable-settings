@@ -19,14 +19,25 @@ namespace Scriptable.Settings
             }
         }
         
-        public static T GetSetting<TID, T>(TID id) where T : ScriptableObject where TID : ISettingId<T>
+        // concrete type of Id to avoid struct boxing
+        public static T GetSetting<TID, T>(in TID id) 
+            where T : ScriptableObject
+            where TID : struct, ISettingId<T>
         {
-            return Instance.LoadNode<T>(Instance.GetNodeById(id.Id));
+            return Instance.LoadNode<T>(GetSettingNodeFromId<TID,T>(id));
         }
         
         public static SettingNode GetSettingNode<T>(T setting) where T : ScriptableObject
         {
             return Instance.GetNodeByInstance(setting);
+        }
+        
+        // concrete type of Id to avoid struct boxing
+        public static SettingNode GetSettingNodeFromId<TID, T>(in TID id) 
+            where T : ScriptableObject 
+            where TID : struct, ISettingId<T>
+        {
+            return Instance.GetNodeById(id.Id);
         }
     }
 }

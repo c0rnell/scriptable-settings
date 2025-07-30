@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Unity.Collections;
 using UnityEditor;
 using UnityEngine.UIElements;
 
@@ -54,13 +55,13 @@ namespace Scriptable.Settings.Editor
             void OnSettingSelected(ChangeEvent<SettingNode> evt)
             {
                 var guid = evt.newValue.Guid;
-                idProperty.stringValue = ShortGuid.Encode(guid);
+                idProperty.boxedValue = ShortGuid.Encode32(guid);
                 idProperty.serializedObject.ApplyModifiedProperties();
             }
 
-            if (string.IsNullOrEmpty(idProperty.stringValue) == false)
+            if (string.IsNullOrEmpty(idProperty.boxedValue.ToString()) == false)
             {
-                var guid  = ShortGuid.Decode(idProperty.stringValue);
+                var guid  = ShortGuid.Decode((FixedString32Bytes)idProperty.boxedValue);
                 var settings = ScriptableSettings.Instance.GetNodeById(guid);
                 if (settings == null)
                 {

@@ -30,7 +30,7 @@ namespace Scriptable.Settings
         private void BuildIndexAndParentsIfNeeded()
         {
             // Avoid rebuilding redundantly if OnEnable is called multiple times
-            if (indexBuilt && nodeIndex != null) return;
+            if (indexBuilt && (nodeIndex != null && nodeNameTypeIndex != null)) return;
 
             //Debug.Log("Building SettingsManager Index and Parent references...");
             nodeIndex = new Dictionary<Guid, SettingNode>();

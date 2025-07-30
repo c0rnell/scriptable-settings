@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using UnityEngine;
 
 // For Convert.ToBase64String and FromBase64String
@@ -17,6 +18,21 @@ namespace Scriptable.Settings
             // Remove padding '='
             return base64Guid.Substring(0, 22);
         }
+        
+        public static FixedString32Bytes Encode32(Guid guid)
+        {
+            if (guid == Guid.Empty) return string.Empty;
+            string base64Guid = Convert.ToBase64String(guid.ToByteArray());
+            // Replace URL-unfriendly characters
+            base64Guid = base64Guid.Replace('+', '-').Replace('/', '_');
+            // Remove padding '='
+            return base64Guid.Substring(0, 22);
+        }
+
+        public static Guid Decode(FixedString32Bytes encoded)
+        {
+            return Decode(encoded.ToString());
+        }
 
         // Decodes the short string back into a Guid
         public static Guid Decode(string encoded)
@@ -24,7 +40,7 @@ namespace Scriptable.Settings
             if (string.IsNullOrEmpty(encoded) || encoded.Length != 22)
             {
                 // Handle invalid input gracefully - perhaps return Guid.Empty or throw
-                Debug.LogError($"Invalid ShortGuid format: '{encoded}'");
+                Debug.LogWarning($"Invalid ShortGuid format: '{encoded}'");
                 return Guid.Empty;
             }
             // Add back padding and replace URL-friendly characters

@@ -462,7 +462,9 @@ namespace Scriptable.Settings
 
             // Update the node name
             node.Rename(newName);
-            indexChanged = true;
+            
+            indexBuilt = false;
+            BuildIndexAndParentsIfNeeded();
 
             // Mark SettingsManager dirty and save
             EditorUtility.SetDirty(this);
