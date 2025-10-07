@@ -134,6 +134,7 @@ namespace Scriptable.Settings.Editor
             _treeView.NodeRenamed += RenameNode;
             _treeView.NodeMoved += MoveNode;
             _treeView.AssetsAdded += AddExistingAssets;
+            _treeView.AddChildNode += AddChildNode;
 
             _addButton = _leftPane.Q<ToolbarButton>("Add");
             _addButton.RegisterCallback<ClickEvent>(CreateNode);
@@ -169,6 +170,13 @@ namespace Scriptable.Settings.Editor
             }
 
             Refresh();
+        }
+
+        private void AddChildNode(VisualElement arg1, SettingNode parent)
+        {
+            CreateSettingNodeWindow.ShowWindow( parent, _addButton,
+                (type, newNodeName) => { CreateNode(parent, newNodeName, type); },
+                (existing) => { CreateNode(parent, existing); });
         }
 
         private void AddExistingAssets(VisualElement source, SettingNode parent, ScriptableObject[] assets)

@@ -17,8 +17,11 @@ namespace Scriptable.Settings.Editor
 
         private VisualElement currentHoverTarget;
         private string hoverClass;
-        public DragAndDropManipulator(VisualElement origin, VisualElement root)
+
+        private int pointerButton;
+        public DragAndDropManipulator(VisualElement origin, VisualElement root, int pointerButton = 0)
         {
+            this.pointerButton = pointerButton;
             this.target = origin;
             this.root = root;
 
@@ -55,6 +58,9 @@ namespace Scriptable.Settings.Editor
 
         private void PointerDownHandler(PointerDownEvent evt)
         {
+            if(evt.button != pointerButton) // left mouse button only
+                return;
+            
             targetStartPosition = target.transform.position;
             pointerStartPosition = evt.position;
             isPressed = true;
@@ -115,6 +121,9 @@ namespace Scriptable.Settings.Editor
 
         private void PointerUpHandler(PointerUpEvent evt)
         {
+            if(evt.button != pointerButton) // left mouse button only
+                return;
+            
             if (root != null && floaterElement != null && floaterElement.parent == root)
                 root.Remove(floaterElement);
             

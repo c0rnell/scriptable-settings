@@ -10,8 +10,8 @@ namespace Scriptable.Settings.Editor
 {
     public class SettingNodesTreeView : VisualElement
     {
-        /*public event Action<VisualElement, SettingNode> AddChildNodeClicked;
-        public event Action<VisualElement, SettingNode> RemoveNodeClicked;*/
+        public event Action<VisualElement, SettingNode> AddChildNode;
+        public event Action<VisualElement, SettingNode> RemoveNode;
         public event Action<VisualElement, SettingNode, string> NodeRenamed;
         public event Action<VisualElement, SettingNode, SettingNode> NodeMoved;
         public event Action<VisualElement, SettingNode, ScriptableObject[]> AssetsAdded;
@@ -43,6 +43,8 @@ namespace Scriptable.Settings.Editor
                     , (from, node, targetNode) => NodeMoved?.Invoke(this, node, targetNode),
                     (from, assets, target) => AssetsAdded?.Invoke(from, target, assets.ToArray())
                  ).WithHoverClass("drag-hover"));
+                
+                ve.AddManipulator(new ContextualMenuManipulator(PopulateContextMenu));
 
                 return ve;
             }; // Create a simple Label for each tree item
@@ -71,103 +73,27 @@ namespace Scriptable.Settings.Editor
             };
             
             _treeView.selectionChanged += OnSelectionChange;
-            
-            /*RegisterCallback<DragPerformEvent, VisualElement>((evt, elm) =>
-                {
-                    if (DragAndDrop.GetGenericData("UserData") is SettingNode draggedNode)
-                    {
-                        NodeMoved?.Invoke(elm, draggedNode, null);
-                    }
-                    DragAndDrop.AcceptDrag();
-                    evt.StopPropagation();
-                }, this);
-            
-            RegisterCallback<DragUpdatedEvent, VisualElement>((evt, elm)  =>
-            {
-                var draggedNode = DragAndDrop.GetGenericData("UserData") as SettingNode;
-                if (draggedNode != null)
-                {
-                    DragAndDrop.visualMode = DragAndDropVisualMode.Move;
-                    evt.StopPropagation();
-                }
-            }, this);*/
-            
-            //_treeView.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
         }
 
-        /*private void SetupDragAndDrop(VisualElement ve)
+        private void PopulateContextMenu(ContextualMenuPopulateEvent obj)
         {
-            ve.RegisterCallback<MouseDownEvent, VisualElement>((evt, elm)  =>
+            var menu    = obj.menu;
+            var element = obj.target as VisualElement;
+            if (element == null)
+                return;
+            var node    = element.userData as SettingNode;
+            
+            menu.AppendAction("Rename", (a) =>
             {
-                if (evt.button == (int)MouseButton.LeftMouse && evt.clickCount == 1)
-                {
-                    DragAndDrop.PrepareStartDrag();
-                    DragAndDrop.SetGenericData("UserData", elm.userData);
-                    
-                }
-            }, ve);
-            ve.RegisterCallback<MouseUpEvent, VisualElement>((evt, elm)  =>
+                    StartRename(element);
+            }, (a) => element.userData == null ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal);
+            
+            menu.AppendAction("Add Child Node", (a) =>
             {
-                DragAndDrop.PrepareStartDrag();
-                elm.RemoveFromClassList("drag-hover");
-            }, ve);
-                
-            ve.RegisterCallback<DragEnterEvent, VisualElement>((evt, elm)  =>
-            {
-                DragAndDrop.StartDrag("Dragging Node");
-                if(elm.userData != DragAndDrop.GetGenericData("UserData"))
-                    elm.AddToClassList("drag-hover");
-                DragAndDrop.visualMode = DragAndDropVisualMode.Move;
-            }, ve);
-
-            ve.RegisterCallback<DragLeaveEvent, VisualElement>((evt, elm)  =>
-            {
-                elm.RemoveFromClassList("drag-hover");
-            }, ve);
-
-            ve.RegisterCallback<DragUpdatedEvent, VisualElement>((evt, elm)  =>
-            {
-                var draggedNode = DragAndDrop.GetGenericData("UserData") as SettingNode;
-                if (elm.userData is SettingNode targetNode && draggedNode != targetNode)
-                {
-                    DragAndDrop.visualMode = DragAndDropVisualMode.Move;
-                    evt.StopPropagation();
-                }
-                else
-                {
-                    elm.RemoveFromClassList("drag-hover");
-                }
-            }, ve);
-                
-            ve.RegisterCallback<DragPerformEvent, VisualElement>((evt, elm)  =>
-            {
-                if (elm.userData is SettingNode targetNode)
-                {
-                    if (DragAndDrop.GetGenericData("UserData") is SettingNode draggedNode)
-                    {
-                        NodeMoved?.Invoke(elm, draggedNode, targetNode);
-                    }
-
-                    if (DragAndDrop.paths.Any())
-                    {
-                        var processableAssets = new List<ScriptableObject>();
-                        foreach (var path in DragAndDrop.paths)
-                        {
-                            var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                            if (asset != null)
-                                processableAssets.Add(asset);
-                        }
-
-                        if (processableAssets.Count > 0)
-                            AssetsAdded?.Invoke(elm, targetNode, processableAssets.ToArray());
-                    }
-                }
-                
-                elm.RemoveFromClassList("drag-hover");
-                DragAndDrop.AcceptDrag();
-                evt.StopPropagation();
-            },ve);
-        }*/
+                AddChildNode?.Invoke(element, node);
+            }, (a) => element.userData == null ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal);
+            
+        }
 
         private void OnSelectionChange(IEnumerable<object> obj)
         {
