@@ -109,6 +109,74 @@ namespace Scriptable.Settings
             return node;
         }
 
+        /*public SettingNode DuplicteNode(SettingNode nodeToCopy)
+        {
+            // 1. Determine folder path for the new asset
+            var folderPath = GetParentBasedFolder(nodeToCopy.Parent);
+
+            // Sanitize name to be a valid filename
+            string sanitizedName = MakeValidFileName(nodeToCopy.Name);
+            if (string.IsNullOrEmpty(sanitizedName))
+            {
+                Debug.LogError($"Failed to create valid filename from '{name}'.");
+                return null;
+            }
+            
+            var asset = ScriptableObject.Instantiate(nodeToCopy.Asset); // Use correct type T
+            asset.name = sanitizedName;
+            
+            // 3. Create the asset file
+            var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folderPath}/{sanitizedName}.asset");
+            AssetDatabase.CreateAsset(asset, assetPath);
+
+            // 4. Get the GUID
+            var assetGuidString = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(assetGuidString))
+            {
+                /* ... error log, cleanup ... #1#
+                return null;
+            }
+            
+            var assetGuid = new Guid(assetGuidString);
+
+            if (asset is ISettingsObject settingsObject)
+            {
+                settingsObject.OnCreated(); // Call OnCreated if applicable
+            }
+
+            // Ensure asset name matches node name if desired, or keep them separate
+            EditorUtility.SetDirty(asset); // Mark asset dirty just in case
+
+            name = Path.GetFileName(assetPath).Replace(".asset", ""); // Get the name without extension
+            
+            // 6. Create the SettingNode (stores name, type T, and assetGuid)
+            var node = new SettingNode(name, asset.GetType() , assetGuid, Loader);
+
+            // 7. Insert node into the tree
+            if (node.Parent != null)
+            {
+                node.Parent.AddChild(node);
+            }
+            else
+            {
+                roots.Add(node);
+            }
+
+            indexBuilt = false;
+            BuildIndexAndParentsIfNeeded();
+
+            EditorUtility.SetDirty(this); // Mark manager dirty
+
+            // 9. Save changes
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log(
+                $"Created Setting Node '{node.Name}' linked to asset '{asset.name}' ({node.Guid}) under parent '{(node.Parent?.Name ?? "Root")}'.",
+                this);
+            return node;
+        }*/
+
         public enum ExistingAssetOperation
         {   
             Move,

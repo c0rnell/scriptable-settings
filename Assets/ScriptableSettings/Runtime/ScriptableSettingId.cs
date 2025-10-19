@@ -25,7 +25,15 @@ namespace Scriptable.Settings
 
         public void OnAfterDeserialize()
         {
-            Id = ShortGuid.Decode(i);
+            if (ShortGuid.TryDecode(i, out var id))
+            {
+                Id = id;
+            }
+            else
+            {
+                Id = Guid.Empty;
+                i = ShortGuid.Encode(Id);
+            }
         }
         
         public void SetId(Guid guid)

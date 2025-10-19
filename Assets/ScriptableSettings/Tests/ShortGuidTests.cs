@@ -83,7 +83,7 @@ namespace Scriptable.Settings.Tests
             string encoded = ShortGuid.Encode(originalGuid);
             
             // Act
-            var decodedGuid = ShortGuid.Decode(encoded);
+            ShortGuid.TryDecode(encoded, out var decodedGuid);
             
             // Assert
             Assert.AreEqual(originalGuid, decodedGuid, "Decoded GUID should match original");
@@ -92,11 +92,8 @@ namespace Scriptable.Settings.Tests
         [Test]
         public void Decode_EmptyString_ReturnsEmptyGuid()
         {
-            // Expect the error log
-            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error, "Invalid ShortGuid format: ''");
-            
             // Act
-            var result = ShortGuid.Decode("");
+            ShortGuid.TryDecode("", out var result);
             
             // Assert
             Assert.AreEqual(Guid.Empty, result, "Empty string should decode to Guid.Empty");
@@ -105,11 +102,8 @@ namespace Scriptable.Settings.Tests
         [Test]
         public void Decode_NullString_ReturnsEmptyGuid()
         {
-            // Expect the error log
-            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error, "Invalid ShortGuid format: ''");
-            
             // Act
-            var result = ShortGuid.Decode(null);
+            ShortGuid.TryDecode(null, out var result);
             
             // Assert
             Assert.AreEqual(Guid.Empty, result, "Null string should decode to Guid.Empty");
@@ -119,12 +113,14 @@ namespace Scriptable.Settings.Tests
         public void Decode_InvalidLength_ReturnsEmptyGuid()
         {
             // Test strings that are too short
-            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error, "Invalid ShortGuid format: 'abc'");
-            Assert.AreEqual(Guid.Empty, ShortGuid.Decode("abc"), "Too short string should return Guid.Empty");
-            
+            var successShort = ShortGuid.TryDecode("abc", out var resultShort);
+            Assert.IsFalse(successShort, "Decoding should fail for too short string");
+            Assert.AreEqual(Guid.Empty, resultShort, "Too short string should return Guid.Empty");
+
             // Test strings that are too long
-            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error, "Invalid ShortGuid format: 'abcdefghijklmnopqrstuvwx'");
-            Assert.AreEqual(Guid.Empty, ShortGuid.Decode("abcdefghijklmnopqrstuvwx"), "Too long string should return Guid.Empty");
+            var successLong = ShortGuid.TryDecode("abcdefghijklmnopqrstuvwx", out var resultLong);
+            Assert.IsFalse(successLong, "Decoding should fail for too long string");
+            Assert.AreEqual(Guid.Empty, resultLong, "Too long string should return Guid.Empty");
             
             // Test string with exactly 21 characters (one short) - this might actually decode successfully
             // Let's remove this assertion as it seems 21 chars can decode to a valid GUID
@@ -132,8 +128,9 @@ namespace Scriptable.Settings.Tests
             // The behavior shows this decodes successfully, so we'll skip this test
             
             // Test string with exactly 23 characters (one too many)
-            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error, "Invalid ShortGuid format: 'abcdefghijklmnopqrstuvw'");
-            Assert.AreEqual(Guid.Empty, ShortGuid.Decode("abcdefghijklmnopqrstuvw"), "23 character string should return Guid.Empty");
+            var success23 = ShortGuid.TryDecode("abcdefghijklmnopqrstuvw", out var result23);
+            Assert.IsFalse(success23, "Decoding should fail for 23 character string");
+            Assert.AreEqual(Guid.Empty, result23, "23 character string should return Guid.Empty");
         }
         
         [Test]
@@ -142,11 +139,11 @@ namespace Scriptable.Settings.Tests
             // Invalid Base64 characters that would fail after URL-safe replacement
             string invalidBase64 = "!@#$%^&*()[]{}|\\<>?;:"; // 22 special characters
             
-            // Expect the error log
-            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error, "Invalid ShortGuid format: '!@#$%^&*()[]{}|\\<>?;:'");
-            
-            var result = ShortGuid.Decode(invalidBase64);
-            
+            // Act
+            var success = ShortGuid.TryDecode(invalidBase64, out var result);
+
+            // Assert
+            Assert.IsFalse(success, "Decoding should fail for invalid Base64");
             Assert.AreEqual(Guid.Empty, result, "Invalid Base64 should return Guid.Empty");
         }
         
@@ -158,7 +155,7 @@ namespace Scriptable.Settings.Tests
             string encoded = ShortGuid.Encode(originalGuid);
             
             // Act
-            bool success = ShortGuid.TryParse(encoded, out Guid parsedGuid);
+            bool success = ShortGuid.TryDecode(encoded, out Guid parsedGuid);
             
             // Assert
             Assert.IsTrue(success, "TryParse should return true for valid input");
@@ -169,7 +166,7 @@ namespace Scriptable.Settings.Tests
         public void TryParse_EmptyString_ReturnsFalseAndEmptyGuid()
         {
             // Act
-            bool success = ShortGuid.TryParse("", out Guid parsedGuid);
+            bool success = ShortGuid.TryDecode("", out Guid parsedGuid);
             
             // Assert
             Assert.IsFalse(success, "TryParse should return false for empty string");
@@ -180,7 +177,7 @@ namespace Scriptable.Settings.Tests
         public void TryParse_NullString_ReturnsFalseAndEmptyGuid()
         {
             // Act
-            bool success = ShortGuid.TryParse(null, out Guid parsedGuid);
+            bool success = ShortGuid.TryDecode(null, out Guid parsedGuid);
             
             // Assert
             Assert.IsFalse(success, "TryParse should return false for null string");
@@ -191,7 +188,7 @@ namespace Scriptable.Settings.Tests
         public void TryParse_InvalidLength_ReturnsFalseAndEmptyGuid()
         {
             // Act
-            bool success = ShortGuid.TryParse("tooshort", out Guid parsedGuid);
+            bool success = ShortGuid.TryDecode("tooshort", out Guid parsedGuid);
             
             // Assert
             Assert.IsFalse(success, "TryParse should return false for invalid length");
@@ -205,7 +202,7 @@ namespace Scriptable.Settings.Tests
             string invalidBase64 = "!@#$%^&*()[]{}|\\<>?;:";
             
             // Act
-            bool success = ShortGuid.TryParse(invalidBase64, out Guid parsedGuid);
+            bool success = ShortGuid.TryDecode(invalidBase64, out Guid parsedGuid);
             
             // Assert
             Assert.IsFalse(success, "TryParse should return false for invalid Base64");
@@ -223,7 +220,7 @@ namespace Scriptable.Settings.Tests
                 
                 // Act
                 string encoded = ShortGuid.Encode(originalGuid);
-                var decodedGuid = ShortGuid.Decode(encoded);
+                ShortGuid.TryDecode(encoded, out var decodedGuid);
                 
                 // Assert
                 Assert.AreEqual(originalGuid, decodedGuid, $"Roundtrip failed for GUID {originalGuid}");
@@ -254,7 +251,8 @@ namespace Scriptable.Settings.Tests
                 // Also verify decode works (except for empty GUID)
                 if (testCase.Guid != Guid.Empty)
                 {
-                    var decoded = ShortGuid.Decode(encoded);
+                    var success = ShortGuid.TryDecode(encoded, out var decoded);
+                    Assert.IsTrue(success, "Decoding should succeed for valid encoded GUID");
                     Assert.AreEqual(testCase.Guid, decoded, "Decoded GUID should match original");
                 }
             }
@@ -284,11 +282,7 @@ namespace Scriptable.Settings.Tests
             string encodedWithUrlSafeChars = "abc-def_ghi-jkl_mnopqr";
             
             // This should not throw and should handle the URL-safe characters
-            var result = ShortGuid.Decode(encodedWithUrlSafeChars);
-            
-            // The result might be Guid.Empty if the base64 is invalid after conversion,
-            // but the important thing is it doesn't throw an exception
-            Assert.IsNotNull(result, "Decode should handle URL-safe characters without throwing");
+            Assert.DoesNotThrow(() => ShortGuid.TryDecode(encodedWithUrlSafeChars, out _));
         }
     }
 }

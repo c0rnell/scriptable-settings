@@ -29,42 +29,20 @@ namespace Scriptable.Settings
             return base64Guid.Substring(0, 22);
         }
 
-        public static Guid Decode(FixedString32Bytes encoded)
+        public static bool TryDecode(FixedString32Bytes encoded, out Guid guid)
         {
-            return Decode(encoded.ToString());
+            return TryDecode(encoded.ToString(), out guid);
         }
 
         // Decodes the short string back into a Guid
-        public static Guid Decode(string encoded)
+        public static bool TryDecode(string encoded, out Guid guid)
         {
             if (string.IsNullOrEmpty(encoded) || encoded.Length != 22)
             {
-                // Handle invalid input gracefully - perhaps return Guid.Empty or throw
-                Debug.LogWarning($"Invalid ShortGuid format: '{encoded}'");
-                return Guid.Empty;
-            }
-            // Add back padding and replace URL-friendly characters
-            string base64Guid = encoded.Replace('-', '+').Replace('_', '/') + "==";
-            try
-            {
-                byte[] guidBytes = Convert.FromBase64String(base64Guid);
-                return new Guid(guidBytes);
-            }
-            catch (FormatException ex)
-            {
-                Debug.LogError($"Failed to decode ShortGuid '{encoded}': {ex.Message}");
-                return Guid.Empty;
-            }
-        }
-
-        // Tries to decode, returning true on success
-        public static bool TryParse(string encoded, out Guid guid)
-        {
-            guid = Guid.Empty;
-            if (string.IsNullOrEmpty(encoded) || encoded.Length != 22)
-            {
+                guid = Guid.Empty;
                 return false;
             }
+            // Add back padding and replace URL-friendly characters
             string base64Guid = encoded.Replace('-', '+').Replace('_', '/') + "==";
             try
             {
@@ -72,8 +50,10 @@ namespace Scriptable.Settings
                 guid = new Guid(guidBytes);
                 return true;
             }
-            catch (FormatException)
+            catch (FormatException ex)
             {
+                Debug.LogError($"Failed to decode ShortGuid '{encoded}': {ex.Message}");
+                guid = Guid.Empty;
                 return false;
             }
         }

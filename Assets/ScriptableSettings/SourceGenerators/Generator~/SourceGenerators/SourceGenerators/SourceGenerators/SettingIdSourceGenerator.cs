@@ -128,7 +128,15 @@ using Unity.Collections;
 
 {indent}    void UnityEngine.ISerializationCallbackReceiver.OnAfterDeserialize()
 {indent}    {{
-{indent}        Id = ShortGuid.Decode(i);
+{indent}        if (ShortGuid.TryDecode(i, out var id))
+{indent}        {{
+{indent}            Id = id;
+{indent}        }}
+{indent}        else
+{indent}        {{
+{indent}            Id = Guid.Empty;
+{indent}            i = ShortGuid.Encode(Id);
+{indent}        }}
 {indent}    }}
 {indent}    
 {indent}    public static bool operator ==({info.StructName} left, {info.StructName} right)

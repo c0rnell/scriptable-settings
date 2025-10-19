@@ -343,7 +343,7 @@ namespace Scriptable.Settings.Tests
             foreach (var corrupted in corruptedGuids)
             {
                 // Act
-                var success = ShortGuid.TryParse(corrupted, out Guid result);
+                var success = ShortGuid.TryDecode(corrupted, out Guid result);
                 
                 // Assert
                 Assert.IsFalse(success, $"Corrupted GUID '{corrupted}' should not parse successfully");

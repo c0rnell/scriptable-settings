@@ -8,6 +8,5 @@
 /Users/filip/Documents/UnityProjects/git/scriptable-settings/Assets/ScriptableSettings/SourceGenerators/Generator~/SourceGenerators/SourceGenerators/SourceGenerators/obj/Debug/netstandard2.0/SourceGenerators.AssemblyInfoInputs.cache
 /Users/filip/Documents/UnityProjects/git/scriptable-settings/Assets/ScriptableSettings/SourceGenerators/Generator~/SourceGenerators/SourceGenerators/SourceGenerators/obj/Debug/netstandard2.0/SourceGenerators.AssemblyInfo.cs
 /Users/filip/Documents/UnityProjects/git/scriptable-settings/Assets/ScriptableSettings/SourceGenerators/Generator~/SourceGenerators/SourceGenerators/SourceGenerators/obj/Debug/netstandard2.0/SourceGenerators.csproj.CoreCompileInputs.cache
-/Users/filip/Documents/UnityProjects/git/scriptable-settings/Assets/ScriptableSettings/SourceGenerators/Generator~/SourceGenerators/SourceGenerators/SourceGenerators/obj/Debug/netstandard2.0/SourceGenerators.sourcelink.json
 /Users/filip/Documents/UnityProjects/git/scriptable-settings/Assets/ScriptableSettings/SourceGenerators/Generator~/SourceGenerators/SourceGenerators/SourceGenerators/obj/Debug/netstandard2.0/SourceGenerators.dll
 /Users/filip/Documents/UnityProjects/git/scriptable-settings/Assets/ScriptableSettings/SourceGenerators/Generator~/SourceGenerators/SourceGenerators/SourceGenerators/obj/Debug/netstandard2.0/SourceGenerators.pdb

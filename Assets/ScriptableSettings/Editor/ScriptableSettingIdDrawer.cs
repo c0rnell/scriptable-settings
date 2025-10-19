@@ -61,7 +61,12 @@ namespace Scriptable.Settings.Editor
 
             if (string.IsNullOrEmpty(idProperty.boxedValue.ToString()) == false)
             {
-                var guid  = ShortGuid.Decode((FixedString32Bytes)idProperty.boxedValue);
+                if (ShortGuid.TryDecode((FixedString32Bytes)idProperty.boxedValue, out var guid) == false)
+                {
+                    dropDown.SetError($"Invalid Guid {idProperty.boxedValue}");
+                    return dropDown;
+                }
+                
                 var settings = ScriptableSettings.Instance.GetNodeById(guid);
                 if (settings == null)
                 {

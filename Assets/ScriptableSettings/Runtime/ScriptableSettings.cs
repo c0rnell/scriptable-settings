@@ -219,11 +219,11 @@ namespace Scriptable.Settings
                 .Where(x => !string.IsNullOrEmpty(x.i))
                 .Select(x => 
                 {
-                    try 
+                    if (ShortGuid.TryDecode(x.i, out var guid))
                     {
-                        return (id: ShortGuid.Decode(x.i), data: x, valid: true);
+                        return (id: guid, data: x, valid: true);
                     }
-                    catch
+                    else
                     {
                         Debug.LogError($"Invalid ShortGuid format: '{x.i}'");
                         return (id: Guid.Empty, data: x, valid: false);
@@ -251,18 +251,22 @@ namespace Scriptable.Settings
                     {
                         if (!string.IsNullOrEmpty(childId))
                         {
-                            try
-                            {
-                                var childGuid = ShortGuid.Decode(childId);
-                                if (nodeIndex.TryGetValue(childGuid, out var childNode))
+                                if (ShortGuid.TryDecode(childId, out var childGuid))
                                 {
-                                    parentNode.AddChild(childNode);
+                                    if (nodeIndex.TryGetValue(childGuid, out var childNode))
+                                    {
+                                        parentNode.AddChild(childNode);
+                                    }
+                                    else
+                                    {
+                                        Debug.LogError($"Non Existing node with id: '{childId}:{childGuid}'");
+
+                                    }
                                 }
-                            }
-                            catch
-                            {
-                                Debug.LogError($"Invalid child ShortGuid format: '{childId}'");
-                            }
+                                else
+                                {
+                                    Debug.LogError($"Invalid child ShortGuid format: '{childId}'");
+                                }
                         }
                     }
                 }
@@ -298,7 +302,7 @@ namespace Scriptable.Settings
             else
             {
                 Debug.LogWarning(
-                    $"SettingNode '{data.n}' (GUID: {ShortGuid.Decode(data.i)}) has missing or empty typeName during deserialization.");
+                    $"SettingNode '{data.n}' (GUID: {(ShortGuid.TryDecode(data.i, out var guid) ? guid : "Invalid ShortGuid " + data.i)}) has missing or empty typeName during deserialization.");
             }
 
             return null;

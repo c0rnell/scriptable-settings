@@ -131,10 +131,11 @@ namespace Scriptable.Settings.Editor
             // Setup Object Field for Manager Asset
             // Setup Button Callbacks
             _treeView.selectionChanged += TreeSelectionChanged;
-            _treeView.NodeRenamed += RenameNode;
-            _treeView.NodeMoved += MoveNode;
-            _treeView.AssetsAdded += AddExistingAssets;
-            _treeView.AddChildNode += AddChildNode;
+            _treeView.NodeRenamed      += RenameNode;
+            _treeView.NodeMoved        += MoveNode;
+            _treeView.AssetsAdded      += AddExistingAssets;
+            _treeView.AddChildNode     += AddChildNode;
+            _treeView.DuplicateNode    += DuplicateNode;
 
             _addButton = _leftPane.Q<ToolbarButton>("Add");
             _addButton.RegisterCallback<ClickEvent>(CreateNode);
@@ -170,6 +171,11 @@ namespace Scriptable.Settings.Editor
             }
 
             Refresh();
+        }
+
+        private void DuplicateNode(VisualElement source, SettingNode node)
+        {
+            CreateDuplicate(node, node.Asset);
         }
 
         private void AddChildNode(VisualElement arg1, SettingNode parent)
@@ -372,6 +378,16 @@ namespace Scriptable.Settings.Editor
         private void CreateNode(SettingNode nodeParent, ScriptableObject existingAsset)
         {
             SettingNode newNode = _scriptableSettings.CreateNode(nodeParent, existingAsset.name, existingAsset, ScriptableSettings.ExistingAssetOperation.Move); // Pass selected node as parent
+            if (newNode != null)
+            {
+                _treeView.PopulateTreeView();
+                _treeView.SelectNode(newNode);
+            }
+        }
+        
+        private void CreateDuplicate(SettingNode node, ScriptableObject existingAsset)
+        {
+            SettingNode newNode = _scriptableSettings.CreateNode(node.Parent, node.Name, existingAsset, ScriptableSettings.ExistingAssetOperation.Duplicate); // Pass selected node as parent
             if (newNode != null)
             {
                 _treeView.PopulateTreeView();

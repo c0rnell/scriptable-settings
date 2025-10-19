@@ -138,7 +138,7 @@ public abstract class SelectorPopupWindow<T> : EditorWindow
         window._selected = selected;
         var pos = GUIUtility.GUIToScreenRect(positionParent.worldBound);
         pos.x -= 200;
-        window.ShowAsDropDown(pos, new Vector2(400, 500));
+        window.ShowAsDropDown(pos, new Vector2(250, 300));
         window.BuildTree(string.Empty);
         return window;
     }
@@ -157,12 +157,16 @@ public abstract class SelectorPopupWindow<T> : EditorWindow
         root.AddToClassList("unity-inspector__container");  // gives you the nice grey background
 
         // 1) SearchField
-        _searchField = new ToolbarSearchField { name = "type-search-field", style = { marginBottom = 4, width = Length.Auto()} };
+        _searchField = new ToolbarSearchField { name = "type-search-field", 
+            style = { marginBottom = 4, width = Length.Auto()},
+            focusable = true
+        };
         _searchField.RegisterValueChangedCallback(evt =>
         {
             BuildTree(evt.newValue);
         });
         root.Add(_searchField);
+        _searchField.Focus();
 
         // 2) TreeView
         _treeView = new TreeView

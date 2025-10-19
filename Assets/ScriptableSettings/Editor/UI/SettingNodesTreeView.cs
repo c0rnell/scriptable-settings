@@ -11,6 +11,7 @@ namespace Scriptable.Settings.Editor
     public class SettingNodesTreeView : VisualElement
     {
         public event Action<VisualElement, SettingNode> AddChildNode;
+        public event Action<VisualElement, SettingNode> DuplicateNode;
         public event Action<VisualElement, SettingNode> RemoveNode;
         public event Action<VisualElement, SettingNode, string> NodeRenamed;
         public event Action<VisualElement, SettingNode, SettingNode> NodeMoved;
@@ -93,6 +94,10 @@ namespace Scriptable.Settings.Editor
                 AddChildNode?.Invoke(element, node);
             }, (a) => element.userData == null ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal);
             
+            menu.AppendAction("Duplicate", (a) =>
+            {
+                DuplicateNode?.Invoke(element, node);
+            }, (a) => element.userData == null ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal);
         }
 
         private void OnSelectionChange(IEnumerable<object> obj)
