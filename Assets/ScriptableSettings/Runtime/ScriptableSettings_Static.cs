@@ -21,7 +21,6 @@ namespace Scriptable.Settings
         
         // concrete type of Id to avoid struct boxing
         public static T GetSetting<TID, T>(in TID id) 
-            where T : ScriptableObject
             where TID : struct, ISettingId<T>
         {
             return Instance.LoadNode<T>(GetSettingNodeFromId<TID,T>(id));
@@ -34,7 +33,6 @@ namespace Scriptable.Settings
         
         // concrete type of Id to avoid struct boxing
         public static SettingNode GetSettingNodeFromId<TID, T>(in TID id) 
-            where T : ScriptableObject 
             where TID : struct, ISettingId<T>
         {
             return Instance.GetNodeById(id.Id);

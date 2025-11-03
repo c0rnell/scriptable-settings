@@ -126,7 +126,7 @@ namespace Scriptable.Settings
         }
 
         // Load Node - Return type changed to ScriptableObject
-        public T LoadNode<T>(SettingNode node) where T : ScriptableObject // Return type Changed
+        public T LoadNode<T>(SettingNode node) // Return type Changed
         {
             if (node == null) throw new ArgumentNullException(nameof(node));
             if (loader == null) throw new InvalidOperationException("SettingsManager Loader has not been initialized.");
@@ -137,7 +137,7 @@ namespace Scriptable.Settings
             // TryGetSetting now returns ScriptableObject
             var setting = node.TryGetSetting(out var so) ? so : null;
 
-            return setting as T;
+            return (T) setting;
         }
 
         // Load Node Async - Return type changed to Task<ScriptableObject>

@@ -581,7 +581,7 @@ namespace Scriptable.Settings
             }
 
 
-            if (nodeToCopy.TryGetSetting(out var source) && pasteTarget.TryGetSetting(out var destination))
+            if (nodeToCopy.TryGetSetting(out ScriptableObject source) && pasteTarget.TryGetSetting(out ScriptableObject destination))
             {
                 try
                 {

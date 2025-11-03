@@ -56,7 +56,8 @@ public class SettingIdSourceGenerator : IIncrementalGenerator
             StructName = typeSymbol.Name,
             NamespaceName = namespaceName,
             SettingTypeName = settingType.ToDisplayString(),
-            SettingTypeSimpleName = settingType.Name
+            SettingTypeSimpleName = settingType.Name,
+            IsTypeInterface = settingType.TypeKind == TypeKind.Interface
         };
     }
 
@@ -116,11 +117,8 @@ using Unity.Collections;
 {indent}    {{
 {indent}        return ScriptableSettings.GetSetting<{info.StructName}, {info.SettingTypeName}>(this);
 {indent}    }}
-{indent}    
-{indent}    public static {info.StructName} GetSettingId({info.SettingTypeName} setting)
-{indent}    {{
-{indent}        return new {info.StructName}(ScriptableSettings.GetSettingNode<{info.SettingTypeName}>(setting).Guid);
-{indent}    }}
+{indent}   
+{(info.IsTypeInterface ? string.Empty : GetSettingIdSource(indent, info))} 
 {indent}    
 {indent}    void UnityEngine.ISerializationCallbackReceiver.OnBeforeSerialize()
 {indent}    {{
@@ -149,7 +147,22 @@ using Unity.Collections;
 {indent}        return !((System.IEquatable<{info.StructName}>)left).Equals(right);
 {indent}    }}
 {indent}    
-{indent}    public static implicit operator {info.StructName}({info.SettingTypeName} setting)
+{(info.IsTypeInterface ? string.Empty : ImplicitConversionOperators(indent, info))}
+{indent}}}
+{namespaceSuffix}";
+    }
+
+    private static string GetSettingIdSource(string indent, SettingIdInfo info)
+    {
+        return $@"{indent}    public static {info.StructName} GetSettingId({info.SettingTypeName} setting)
+{indent}    {{
+{indent}        return new {info.StructName}(ScriptableSettings.GetSettingNode<{info.SettingTypeName}>(setting).Guid);
+{indent}    }}";
+    }
+
+    private static string ImplicitConversionOperators(string indent, SettingIdInfo info)
+    {
+        return $@"{indent}    public static implicit operator {info.StructName}({info.SettingTypeName} setting)
 {indent}    {{
 {indent}        return GetSettingId(setting);
 {indent}    }}
@@ -157,16 +170,15 @@ using Unity.Collections;
 {indent}    public static implicit operator {info.SettingTypeName}({info.StructName} settingId)
 {indent}    {{
 {indent}        return settingId.GetSetting();
-{indent}    }}
-{indent}}}
-{namespaceSuffix}";
+{indent}    }}";
     }
-
+    
     private class SettingIdInfo
     {
-        public string StructName { get; set; }
-        public string NamespaceName { get; set; }
-        public string SettingTypeName { get; set; }
+        public string StructName            { get; set; }
+        public string NamespaceName         { get; set; }
+        public string SettingTypeName       { get; set; }
         public string SettingTypeSimpleName { get; set; }
+        public bool   IsTypeInterface       { get; set; }
     }
 }
