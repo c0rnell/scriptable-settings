@@ -26,6 +26,9 @@ namespace Scriptable.Settings
         public ISettingLoader Loader => loader ??= loaderFactory.CreateSettingLoader();
 
         [NonSerialized] internal bool indexChanged = false;
+        
+        [NonSerialized] internal List<SettingNode> rebuiltTypeData = new List<SettingNode>();
+
 
         private void BuildIndexAndParentsIfNeeded()
         {
@@ -37,6 +40,17 @@ namespace Scriptable.Settings
             nodeNameTypeIndex = new Dictionary<int, SettingNode>();
             Queue<SettingNode> nodesToProcess = new Queue<SettingNode>();
 
+            if (rebuiltTypeData.Count > 0)
+            {
+                foreach (var node in rebuiltTypeData)
+                {
+                    if (node.TryGetSetting(out var so))
+                    {
+                        node.SetType(so.GetType());
+                    }
+                }
+            }
+            
             // Initialize processing with root nodes
             foreach (var root in roots)
             {
@@ -236,6 +250,11 @@ namespace Scriptable.Settings
             foreach (var item in dataWithId)
             {
                 var node = new SettingNode(item.data.n, ConstructType(item.data), item.id, Loader);
+                if (node.SettingType == null)
+                {
+                    rebuiltTypeData.Add(node);
+                }
+                
                 if (nodeIndex.TryAdd(item.id, node) == false)
                 {
                     Debug.LogWarning($"Duplicate GUID {item.id} found during deserialization");
@@ -307,15 +326,5 @@ namespace Scriptable.Settings
 
             return null;
         }
-
-
-        // --- Editor-Only CRUD Operations ---
-#if UNITY_EDITOR
-        // Create Node - Constraint changed, removed InitializeGUID call
-
-        
-
-#endif // UNITY_EDITOR
-
     }
 }

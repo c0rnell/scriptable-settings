@@ -10,17 +10,34 @@ using UnityEngine.Assertions;
 
 namespace Scriptable.Settings
 {
+    public class SettingNodeError
+    {
+        public enum ErrorType
+        {
+            TypeCast,
+            General
+        }
+        
+        public ErrorType Type;
+        public string Msg;
+
+        public SettingNodeError(string msg, ErrorType type = ErrorType.General)
+        {
+            Msg = msg;
+            Type = type;
+        }
+    }
     public class SettingNode
     {
         public Guid Guid { get; }
         public string Name { get; private set; }
-        public Type SettingType { get; }
+        public Type SettingType { get; private set; }
         public SettingNode Parent { get; private set; }
         public ScriptableObject Asset => _cache != null && _cache.TryGetTarget(out var so) ? (ScriptableObject)so : null;
     
         private List<SettingNode> children = new List<SettingNode>();
         
-        public List<string> Errors = new List<string>();
+        public List<SettingNodeError> Errors = new List<SettingNodeError>();
         
         public bool IsValid => Errors.Count == 0;
     
@@ -38,7 +55,7 @@ namespace Scriptable.Settings
             Assert.IsNotNull(_settingLoader);
         
             if (assetGuid == Guid.Empty)
-                Errors.Add("Asset GUID cannot be empty for a new SettingNode!");
+                Errors.Add(new ("Asset GUID cannot be empty for a new SettingNode!"));
 
             Guid = assetGuid;
             Name = name;
@@ -46,12 +63,12 @@ namespace Scriptable.Settings
             SettingType = settingType;
             if (SettingType == null)
             {
-                Errors.Add($"Type of asset with {assetGuid} do not exists!");
+                Errors.Add(new ($"Type of asset with {assetGuid} do not exists!", SettingNodeError.ErrorType.TypeCast));
                 return;
             }  
             
             if(!typeof(ScriptableObject).IsAssignableFrom(this.SettingType))
-                Errors.Add($"Type '{settingType.FullName}' must inherit from ScriptableObject!");
+                Errors.Add(new ($"Type '{settingType.FullName}' must inherit from ScriptableObject!"));
         }
 
         // --- Runtime Methods ---
@@ -168,6 +185,12 @@ namespace Scriptable.Settings
             var loadedSo = await _settingLoader.LoadAsync(this); // Load returns ScriptableObject
             CacheReference(loadedSo);
             return loadedSo;
+        }
+
+        public void SetType(Type type)
+        {
+            SettingType = type;
+            Errors.RemoveAll(x => x.Type == SettingNodeError.ErrorType.TypeCast);
         }
     
     }

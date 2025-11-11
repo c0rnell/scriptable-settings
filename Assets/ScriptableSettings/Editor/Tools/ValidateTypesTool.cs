@@ -50,7 +50,20 @@ namespace Scriptable.Settings.Editor.Tools
 
         private void ValidateAndFixNodeTypes(ScriptableSettings windowScriptableSettings)
         {
-            //TODO implement validation logic
+            foreach (var settingNode in windowScriptableSettings.nodeIndex)
+            {
+                if (settingNode.Value.SettingType == null)
+                {
+                    var loadedAsset = windowScriptableSettings.Loader.Load(settingNode.Value);
+
+                    if (loadedAsset != null)
+                    {
+                        var data = windowScriptableSettings.serializedNodes.Find(x =>
+                            x.i == ShortGuid.Encode(settingNode.Value.Guid));
+                        Debug.Log($"Setting node {settingNode.Value.Name} mismatched type {data.t} : {loadedAsset.GetType()}");
+                    }
+                }
+            }
         }
     }
 }
