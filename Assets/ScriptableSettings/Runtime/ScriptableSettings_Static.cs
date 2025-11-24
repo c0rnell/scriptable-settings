@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 namespace Scriptable.Settings
@@ -36,6 +37,18 @@ namespace Scriptable.Settings
             where TID : struct, ISettingId<T>
         {
             return Instance.GetNodeById(id.Id);
+        }
+        
+        public static bool TryGetSetting<T>(out T setting) 
+            where T : ScriptableObject
+        {
+            var nodes = Instance.GetNodesOfType<T>().ToArray();
+            if(nodes.Length > 0)
+            {
+                return nodes[0].TryGetSetting<T>(out setting);
+            }
+            setting     = null;
+            return false;
         }
     }
 }

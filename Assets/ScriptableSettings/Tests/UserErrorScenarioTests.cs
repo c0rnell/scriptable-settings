@@ -141,7 +141,7 @@ namespace Scriptable.Settings.Tests
             
             // Assert
             Assert.IsFalse(nodeWithEmptyGuid.IsValid);
-            Assert.IsTrue(nodeWithEmptyGuid.Errors.Any(e => e.Contains("Asset GUID cannot be empty")));
+            Assert.IsTrue(nodeWithEmptyGuid.Errors.Any(e => e.Type == SettingNodeError.ErrorType.EmptyGuid));
         }
 
         [Test]
@@ -360,7 +360,7 @@ namespace Scriptable.Settings.Tests
             
             // Assert
             Assert.IsFalse(node.IsValid);
-            Assert.IsTrue(node.Errors.Any(e => e.Contains("Type of asset")));
+            Assert.IsTrue(node.Errors.Any(e => e.Type == SettingNodeError.ErrorType.TypeCast));
         }
 
         [Test]
@@ -371,7 +371,7 @@ namespace Scriptable.Settings.Tests
             
             // Assert
             Assert.IsFalse(node.IsValid);
-            Assert.IsTrue(node.Errors.Any(e => e.Contains("must inherit from ScriptableObject")));
+            Assert.IsTrue(node.Errors.Any(e => e.Type == SettingNodeError.ErrorType.General));
         }
 
         [Test]
@@ -456,8 +456,8 @@ namespace Scriptable.Settings.Tests
             // Assert - All errors should be reported
             Assert.IsFalse(invalidNode.IsValid);
             Assert.GreaterOrEqual(invalidNode.Errors.Count, 2); // At least GUID and type errors
-            Assert.IsTrue(invalidNode.Errors.Any(e => e.Contains("Asset GUID cannot be empty")));
-            Assert.IsTrue(invalidNode.Errors.Any(e => e.Contains("must inherit from ScriptableObject")));
+            Assert.IsTrue(invalidNode.Errors.Any(e => e.Type == SettingNodeError.ErrorType.EmptyGuid));
+            Assert.IsTrue(invalidNode.Errors.Any(e => e.Type == SettingNodeError.ErrorType.General));
         }
 
         [Test]

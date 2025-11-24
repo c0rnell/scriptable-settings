@@ -170,7 +170,7 @@ namespace Scriptable.Settings.Tests
             Assert.AreEqual("MissingTypeNode", node.Name);
             Assert.IsFalse(node.IsValid);
             Assert.IsNotEmpty(node.Errors);
-            Assert.IsTrue(node.Errors.Any(e => e.Contains("Type")));
+            Assert.IsTrue(node.Errors.Any(e => e.Type == SettingNodeError.ErrorType.TypeCast));
         }
         
         [Test]

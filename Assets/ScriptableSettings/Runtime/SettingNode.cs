@@ -15,7 +15,8 @@ namespace Scriptable.Settings
         public enum ErrorType
         {
             TypeCast,
-            General
+            General,
+            EmptyGuid
         }
         
         public ErrorType Type;
