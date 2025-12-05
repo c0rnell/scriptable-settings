@@ -104,7 +104,11 @@ namespace Scriptable.Settings
         public SettingNode GetNodeById(Guid settingId)
         {
             BuildIndexAndParentsIfNeeded(); // Ensure index is ready
-            nodeIndex.TryGetValue(settingId, out SettingNode node);
+            if (nodeIndex.TryGetValue(settingId, out SettingNode node) == false)
+            {
+                Debug.LogWarning($"No SettingNode found with Id: {settingId}");
+            }
+
             return node;
         }
 
@@ -149,9 +153,12 @@ namespace Scriptable.Settings
             BuildIndexAndParentsIfNeeded();
 
             // TryGetSetting now returns ScriptableObject
-            var setting = node.TryGetSetting(out var so) ? so : null;
-
-            return (T) setting;
+            if (node.TryGetSetting(out var so) == false)
+            {
+                Debug.LogError($"Failed to load setting for node '{node.Name}' with Id: {node.Guid}");
+                return default;
+            }
+            return (T) so;
         }
 
         // Load Node Async - Return type changed to Task<ScriptableObject>

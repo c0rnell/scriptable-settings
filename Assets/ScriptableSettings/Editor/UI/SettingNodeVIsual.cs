@@ -46,7 +46,9 @@ namespace Scriptable.Settings.Editor
              _header.Add(title);
              var guidElement = new VisualElement() { style = { flexGrow = 1, flexDirection = FlexDirection.RowReverse } };
              _header.Add(guidElement);
-             guidElement.Add(new Label($"GUID: {node.Guid}"));
+             var guidLabel = new Label($"GUID: {node.Guid:N}");
+             guidLabel.RegisterCallback<ClickEvent>(CopyGuidToClipboard);
+             guidElement.Add(guidLabel);
 
             // _header.Add(new TextElement() { text = $"Node Type: {node.SettingType.FullName}"});
              // Add a separator
@@ -84,7 +86,18 @@ namespace Scriptable.Settings.Editor
               // Reset scroll position after populating
               if (_scrollView != null) _scrollView.scrollOffset = Vector2.zero;
         }
-        
+
+        private void CopyGuidToClipboard(ClickEvent evt)
+        {
+            Label label = evt.currentTarget as Label;
+            if (label != null)
+            {
+                string guidText = label.text.Replace("GUID: ", "");
+                EditorGUIUtility.systemCopyBuffer = guidText;
+                Debug.Log($"Copied GUID '{guidText}' to clipboard.");
+            }
+        }
+
         public void ClearInspector()
         {
             _header.Clear();

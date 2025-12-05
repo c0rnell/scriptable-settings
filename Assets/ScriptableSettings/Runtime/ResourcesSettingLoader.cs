@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Scriptable.Settings
 {
@@ -8,15 +12,26 @@ namespace Scriptable.Settings
     {
         public ScriptableObject Load(SettingNode node)
         {
+            // Use Unity editor aset databse because Resources.Load cannot be used in baking time
+#if UNITY_EDITOR
+            var assetPath = AssetDatabase.GUIDToAssetPath(new GUID(node.Guid.ToString("N")));
+            return AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath);
+#endif
             var path = NodeLoadPath(node);
             // Load as base ScriptableObject
-            var so = Resources.Load<ScriptableObject>(path);
-            if (so != null) {
-                // Cannot verify GUID on 'so' itself anymore
-                return so;
+            try
+            {
+                var so = Resources.Load<ScriptableObject>(path);
+                if (so != null) {
+                    // Cannot verify GUID on 'so' itself anymore
+                    return so;
+                }
             }
-        
-
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+            
             Debug.LogWarning($"ResourcesSettingLoader failed to load setting with path '{path}' or ID '{node.Guid}'.");
             return null;
         }
