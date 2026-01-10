@@ -8,6 +8,8 @@ namespace Scriptable.Settings.Editor
 {
     public class SettingNodeDropdown : SelectorPopupField<SettingNode>
     {
+        protected override bool AllowNull => true;
+
         private readonly Func<SettingNode,bool> _typeValidityCheck;
 
         public SettingNodeDropdown(string label, Func<IEnumerable<SettingNode>> itemProvider, Func<SettingNode, bool> typeValidityCheck = null) : base()
@@ -65,7 +67,7 @@ namespace Scriptable.Settings.Editor
         {
             base.SetValueWithoutNotify(newValue);
             SetError(null);
-           _textElement.text = newValue.Name;
+           _textElement.text = newValue?.Name ?? "Invalid";
         }
         
         public void SetError(string error)

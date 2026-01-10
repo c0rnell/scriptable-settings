@@ -14,6 +14,8 @@ using UnityEngine.UIElements;
 [UxmlElement]
 public abstract partial class SelectorPopupField<T> : BaseField<T>
 {
+    protected virtual bool AllowNull => false;
+    
     protected  Func<IEnumerable<T>> _itemProvider;
     
     private readonly VisualElement _arrowElement;
@@ -113,7 +115,7 @@ public abstract partial class SelectorPopupField<T> : BaseField<T>
 
     protected virtual bool ChooseSelection(T type, string name)
     {
-        if (type == null)
+        if (type == null && AllowNull == false)
             return false;
 
         // Set the selected type
@@ -205,7 +207,7 @@ public abstract class SelectorPopupWindow<T> : EditorWindow
         // When the user clicks an item
         _treeView.selectionChanged += objs =>
         {
-            var selectedIndex = (T)objs.First();
+            var selectedIndex = (T)objs.FirstOrDefault();
             if (OnSelectionChosen == null)
             {
                 Close();
@@ -267,7 +269,7 @@ public abstract class SelectorPopupWindow<T> : EditorWindow
     protected virtual List<TreeViewItemData<T>> GroupItemsToTree(List<T> flat)
     {
         return flat
-            .Select(t => new TreeViewItemData<T>(t.GetHashCode(), t))
+            .Select(t => new TreeViewItemData<T>(t?.GetHashCode() ?? -1, t))
             .ToList();
     }
 
@@ -284,6 +286,8 @@ public abstract class SelectorPopupWindow<T> : EditorWindow
 
     protected virtual string FormatSelectionItem(T item)
     {
+        if (item == null)
+            return "<None>";
         return item.ToString();
     }
 

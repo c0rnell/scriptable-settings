@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Scriptable.Settings
 {
@@ -211,7 +212,7 @@ namespace Scriptable.Settings
             switch (operation)
             {
                 case ExistingAssetOperation.Duplicate:
-                    AssetDatabase.CreateAsset(ScriptableObject.Instantiate(source), uniqueAssetPath);
+                    DuplicateAssetWithSubAssets(source, uniqueAssetPath);
                     break;
                 case ExistingAssetOperation.SaveInstance:
                     AssetDatabase.CreateAsset(source, uniqueAssetPath);
@@ -286,6 +287,80 @@ namespace Scriptable.Settings
                 $"Created Setting Node '{node.Name}' linked to asset '{asset.name}' ({node.Guid}) under parent '{(parent?.Name ?? "Root")}'.",
                 this);
             return node;
+        }
+
+        private static void DuplicateAssetWithSubAssets<T>(T source, string uniqueAssetPath) where T : ScriptableObject
+        {
+            var sourcePath = AssetDatabase.GetAssetPath(source);
+    
+            // Get all sub-assets from the source file
+            var allSourceAssets = AssetDatabase.LoadAllAssetsAtPath(sourcePath);
+    
+            // Create mapping from old assets to new instances
+            var assetMap = new Dictionary<Object, Object>();
+    
+            // Instantiate main asset
+            var newMainAsset = ScriptableObject.Instantiate(source);
+            newMainAsset.name = source.name;
+            assetMap[source] = newMainAsset;
+    
+            // Instantiate all sub-assets (skip the main asset and any non-ScriptableObject assets)
+            var newSubAssets = new List<ScriptableObject>();
+            foreach (var subAsset in allSourceAssets)
+            {
+                if (subAsset == source) continue;
+                if (!AssetDatabase.IsSubAsset(subAsset)) continue;
+                if (subAsset is not ScriptableObject subSO) continue;
+        
+                var newSubAsset = ScriptableObject.Instantiate(subSO);
+                newSubAsset.name = subSO.name;
+                assetMap[subAsset] = newSubAsset;
+                newSubAssets.Add(newSubAsset);
+            }
+    
+            // Create the main asset file
+            AssetDatabase.CreateAsset(newMainAsset, uniqueAssetPath);
+    
+            // Add sub-assets to the new file
+            foreach (var newSubAsset in newSubAssets)
+            {
+                AssetDatabase.AddObjectToAsset(newSubAsset, uniqueAssetPath);
+            }
+    
+            // Remap references in all new assets to point to new sub-assets instead of old ones
+            RemapAssetReferences(newMainAsset, assetMap);
+            foreach (var newSubAsset in newSubAssets)
+            {
+                RemapAssetReferences(newSubAsset, assetMap);
+            }
+    
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void RemapAssetReferences(Object target, Dictionary<Object, Object> assetMap)
+        {
+            var serializedObject = new SerializedObject(target);
+            var iterator = serializedObject.GetIterator();
+            bool modified = false;
+    
+            while (iterator.NextVisible(true))
+            {
+                if (iterator.propertyType != SerializedPropertyType.ObjectReference) continue;
+        
+                var oldRef = iterator.objectReferenceValue;
+                if (oldRef == null) continue;
+        
+                if (assetMap.TryGetValue(oldRef, out var newRef))
+                {
+                    iterator.objectReferenceValue = newRef;
+                    modified = true;
+                }
+            }
+    
+            if (modified)
+            {
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
         
         private string GetParentBasedFolder(SettingNode parent)

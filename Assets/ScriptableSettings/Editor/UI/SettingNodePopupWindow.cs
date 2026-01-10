@@ -25,12 +25,21 @@ namespace Scriptable.Settings.Editor
         protected override List<TreeViewItemData<SettingNode>> GroupItemsToTree(List<SettingNode> flat)
         {
             var rootItems = new List<TreeViewItemData<SettingNode>>();
+
+            if (flat.Contains(null))
+            {
+                flat.Remove(null);
+                rootItems.Add(new TreeViewItemData<SettingNode>(-1, null));
+            }
             
             if (flat == null || flat.Count == 0)
                 return rootItems;
-            
-            if(flat.All(x => x.Parent == flat[0].Parent))
-                return flat.Select(SettingNodesTreeView.CreateTreeViewItemRecursive).ToList();
+
+            if (flat.All(x => x.Parent == flat[0].Parent))
+            {
+                rootItems.AddRange(flat.Select(SettingNodesTreeView.CreateTreeViewItemRecursive));
+                return rootItems;
+            }
             
             if (_wasSearched)
             {
@@ -110,6 +119,8 @@ namespace Scriptable.Settings.Editor
 
         protected override string FormatSelectionItem(SettingNode item)
         {
+            if(item == null)
+                return "<None>";
             return item.Name;
         }
     }

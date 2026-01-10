@@ -19,17 +19,18 @@ namespace Scriptable.Settings.Editor
             
 
             var dropDown = new SettingNodeDropdown(preferredLabel, GetAllSettingNodesOfType, 
-                (selected) => targetType.IsAssignableFrom(selected.SettingType));
+                (selected) => selected == null || targetType.IsAssignableFrom(selected.SettingType));
             dropDown.RegisterCallback<ChangeEvent<SettingNode>>(OnSettingSelected);
             
             
             IEnumerable<SettingNode> GetAllSettingNodesOfType()
             {
+                var nodes = new List<SettingNode>();
+                nodes.Add(null);
+
                 var customAttributes = GetAttribute<SettingSourceAttribute>();
                 if (customAttributes.Any())
                 {
-                    var nodes = new List<SettingNode>();
-
                     foreach (var customAttribute in customAttributes)
                     {
                         for (var index = 0; index < customAttribute.SettingCollectionType.Length; index++)
@@ -49,12 +50,13 @@ namespace Scriptable.Settings.Editor
                     return nodes;
                 }
                 
-                return ScriptableSettings.Instance.GetNodesOfType(targetType);
+                nodes.AddRange(ScriptableSettings.Instance.GetNodesOfType(targetType));
+                return nodes;
             }
             
             void OnSettingSelected(ChangeEvent<SettingNode> evt)
             {
-                var guid = evt.newValue.Guid;
+                var guid = evt.newValue?.Guid ?? Guid.Empty;
                 idProperty.boxedValue = ShortGuid.Encode32(guid);
                 idProperty.serializedObject.ApplyModifiedProperties();
             }
@@ -77,6 +79,10 @@ namespace Scriptable.Settings.Editor
                     dropDown.SetValueWithoutNotify(settings);
                 }
                 
+            }
+            else
+            {
+                dropDown.SetValueWithoutNotify(null);
             }
                 
             return dropDown;

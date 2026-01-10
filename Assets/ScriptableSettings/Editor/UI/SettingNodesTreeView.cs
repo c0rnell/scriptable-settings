@@ -131,6 +131,11 @@ namespace Scriptable.Settings.Editor
 
         public static TreeViewItemData<SettingNode> CreateTreeViewItemRecursive(SettingNode node)
         {
+            if (node == null)
+            {
+                return new TreeViewItemData<SettingNode>(-1, null);
+            }
+            
             int currentId = node.Name.GetHashCode(); 
             var childrenData = new List<TreeViewItemData<SettingNode>>();
             foreach (var childNode in node.Children)
